@@ -31,7 +31,7 @@ script: docker-compose run --rm test
 # this first line is a bandage to replace `/app`
 # with the current directory
 after_success:
-  - sed -i.bak 's/\/app/${$(pwd)//\//\\/}/g' .coverage
+  - sed -i.bak "s/\/app/${PWD//\//\\/}/g" .coverage
   - coveralls
 
 # Deploy to PyPi
