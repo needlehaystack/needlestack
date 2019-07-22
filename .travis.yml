@@ -1,0 +1,42 @@
+dist: xenial
+language: python
+python:
+  - 3.7
+
+services:
+  - docker
+
+env:
+  - DOCKER_COMPOSE_VERSION=1.22.0
+
+# Pin docker-compose version
+before_install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+
+# Install dependencies
+install:
+  - make compile-proto
+  - docker-compose build test
+  - pip install coveralls
+
+# Run tests
+script: docker-compose run --rm test
+
+# Send coverage report
+after_success:
+  - coveralls
+
+# Deploy to PyPi
+deploy:
+  provider: pypi
+  distributions: sdist bdist_wheel
+  user: needlehaystack
+  password:
+    secure: ZmHPdx0AXnyOoClkgWs9l5nb0ZRwJRiZY5MMoVennDS5ZgBETSh9k1CrGf1BBL9nZSh7DgYZHOBpTtOW2etD7zk0DESkxLHe8yi1Pknb2WDAGpg+nd9T+6A2JlHrxRltVXRjikDf5X+fgOqmnY+RzwLGIH8sX2WbHg/ECWGshtkeAXp2iuQVsNrSDxRLAngHGdbP9puW/V25Xa+Rjk1YNGx2eC44EjciZDcDZGC5gScWjCCkGoWhfzkwLEkb4+SszTxuuOEQWGSvKwDsFIWu/HLbezxJ+zghpFCiH8sW8/6FzgKKncme0RZXbD467JNQeez+TiqiTDrcleS83tcSGKiWiXSK59TOIoxBBOhmOZ9rgPmKisAfnYhCjyh4xz9GSQ9w+aL2LIPyT3JM0Va8gnb/VzUNwuRSdthKa15s7K+wgno/KUIV0pQkQTBmTQD+8fUjJoBoeKlZY59MWF7PBanGuH+SLelRzPbThq3D4e5ZUMspHNkQZ8TFD6JIoalfZCf7DRnsNrVPio2tLb6Q/dalm71iEEpXE9cwf/0Nkx9E7H3px/Vkqe180DIuSw4iZwKiOexhzWDC89Aurh9xw1D2nvXThD86uWxckQebH6Rm0uSAi0VO1wO4Cc4OQjntlFQc8jXNwNd+KpyC0yUJcNwlYOQJ5rWiFiWALJr1sxU=
+  on:
+    tags: true
+    repo: needlehaystack/needlestack
+    python: 3.7

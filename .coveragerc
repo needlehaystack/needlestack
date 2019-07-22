@@ -1,0 +1,4 @@
+[report]
+omit = needlestack/apis/*_pb2_grpc.py
+exclude_lines =
+    raise NotImplementedError() 

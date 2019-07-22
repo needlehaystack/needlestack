@@ -1,0 +1,132 @@
+version: '3.4'
+
+
+#######################
+#
+#      ALIASES
+#
+#######################
+
+x-build-args:
+  args: &args 
+    - BASE_IMAGE=3.7.4-slim-stretch
+
+x-environment:
+  environment: &environment
+    PYTHONPATH: '/app'
+    LANG: 'en_US.UTF-8'
+
+x-searcher-grpc:
+  searcher-grpc-template: &searcher-grpc-template
+    build:
+      dockerfile: ./docker/needlestack.dockerfile
+      context: .
+      args: *args
+    environment: *environment
+    image: "needlestack-app"
+    volumes:
+      - ./:/app
+    depends_on:
+      - zoo1
+      - zoo2
+      - zoo3
+    command:
+      - python
+      - examples/run_searcher.py
+
+x-zookeeper:
+  zookeeper-image: &zookeeper-image
+    image: zookeeper:3.4.13
+
+
+#######################
+#
+#      CONTAINERS
+#
+#######################
+
+services:
+
+  merger-grpc:
+    build:
+      dockerfile: ./docker/needlestack.dockerfile
+      context: .
+      args: *args
+    environment: *environment
+    image: "needlestack-app"
+    volumes:
+      - ./:/app
+    depends_on:
+      - zoo1
+      - zoo2
+      - zoo3
+      - searcher-grpc1
+      - searcher-grpc2
+      - searcher-grpc3
+    ports: 
+      - 50051:50051
+    command:
+      - python
+      - examples/run_merger.py
+
+  searcher-grpc1:
+    <<: *searcher-grpc-template
+    ports:
+      - 50052:50051
+
+  searcher-grpc2:
+    <<: *searcher-grpc-template
+    ports:
+      - 50053:50051
+
+  searcher-grpc3:
+    <<: *searcher-grpc-template
+    ports:
+      - 50054:50051
+
+  zoo1:
+    <<: *zookeeper-image
+    hostname: zoo1
+    ports:
+      - 2181:2181
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=0.0.0.0:2888:3888 server.2=zoo2:2888:3888 server.3=zoo3:2888:3888
+
+  zoo2:
+    <<: *zookeeper-image
+    hostname: zoo2
+    ports:
+      - 2182:2181
+    environment:
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=0.0.0.0:2888:3888 server.3=zoo3:2888:3888
+
+  zoo3:
+    <<: *zookeeper-image
+    hostname: zoo3
+    ports:
+      - 2183:2181
+    environment:
+      ZOO_MY_ID: 3
+      ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=zoo2:2888:3888 server.3=0.0.0.0:2888:3888
+
+  test:
+    build:
+      dockerfile: ./docker/test.dockerfile
+      context: .
+      args: *args
+    command: make test-all
+    image: "needlestack-test"
+    volumes:
+      - ./:/app
+
+  docs:
+    build:
+      dockerfile: ./docker/test.dockerfile
+      context: .
+      args: *args
+    command: make sphinx-docs
+    image: "needlestack-test"
+    volumes:
+      - ./:/app

@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+import "needlestack/apis/collections.proto";
+import "needlestack/apis/neighbors.proto";
+import "needlestack/apis/tensors.proto";
+
+
+/********************
+ *
+ * Servicers
+ * 
+ ********************/
+
+/* Main entrypoint for external clients to run distributed kNN searches */
+service Merger {
+    rpc Search (SearchRequest) returns (SearchResponse);
+    rpc SearchStream (SearchRequest) returns (stream SearchResultItem);
+    rpc Retrieve (RetrieveRequest) returns (RetrieveResponse);
+    rpc CollectionConfiguration (CollectionConfigurationRequest) returns (CollectionConfigurationResponse);
+    rpc GetCollections(CollectionsRequest) returns (CollectionsResponse);
+};
+
+/* Worker used by `Merger` to perform single-node kNN search */
+service Searcher {
+    rpc Search (SearchRequest) returns (SearchResponse);
+    rpc SearchStream (SearchRequest) returns (stream SearchResultItem);
+    rpc Retrieve (RetrieveRequest) returns (RetrieveResponse);
+    rpc CollectionLoad (CollectionLoadRequest) returns (CollectionLoadResponse);
+};
+
+/********************
+ *
+ * Search Requests
+ * 
+ ********************/
+
+/* An incoming search request which contains vector(s) to perform
+ * kNN search with. Also contains metadata on how to perform the search. */
+message SearchRequest {
+    NDArray vector = 1;
+    // Number of neighbors to return
+    uint32 count = 2;
+
+    // Search shards from collection
+    string collection_name = 3;
+
+    // Optionally provide shards within collection to search
+    repeated string shard_names = 4;
+};
+
+message SearchResponse {
+    repeated SearchResultItem items = 1;
+    repeated string headers = 2;
+};
+
+/* A single search result */
+message SearchResultItem {
+    string id = 1;
+    oneof distance {
+        float float_distance = 2;
+        double double_distance = 3;
+    }
+    Metadata metadata = 4;
+};
+
+/********************
+ *
+ * Retrieve Requests
+ * 
+ ********************/
+
+message RetrieveRequest {
+    string id = 1;
+    // Find ids in this collection
+    string collection_name = 2;
+
+    // Optionally look at just these shards
+    repeated string shard_names = 3;
+};
+
+message RetrieveResponse {
+    string id = 1;
+    NDArray vector = 2;
+    Metadata metadata = 3;
+};

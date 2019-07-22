@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+
+/* Multidimensional array */
+message NDArray {
+    /* Numeric type used in vector */
+    enum DType {
+        FLOAT16 = 0;
+        FLOAT32 = 1;
+        FLOAT64 = 2;
+        INT8 = 3;
+        INT16 = 4;
+        INT32 = 5;
+        INT64 = 6;
+    };
+
+    DType dtype = 1;
+
+    // shape of data
+    repeated uint32 shape = 2 [packed = true];
+
+    // raw numpy array
+    bytes numpy_content = 3;
+
+    /* Flattened data for servicers that can't use numpy */
+    repeated float float_val = 4 [packed = true];  // float16, float32
+    repeated double double_val = 5 [packed = true];  // float64
+    repeated int32 int_val = 6 [packed = true];  // int8, int16, int32
+    repeated int64 long_val = 7 [packed = true];  // int64
+};

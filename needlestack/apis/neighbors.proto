@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+import "needlestack/apis/data_sources.proto";
+
+
+/* Encapsulates all index types */
+message SpatialIndex {
+    oneof index {
+        FaissIndex faiss_index = 1;
+    }
+}
+
+/* Information to load a Faiss index */
+message FaissIndex {
+    bytes index_binary = 1;
+    repeated Metadata metadatas = 2;
+    DataSource data_source = 3;
+};
+
+/* Metadata for one particular vector*/
+message Metadata {
+    string id = 1;
+    repeated MetadataField fields = 2;
+};
+
+/* One field for metadata */
+message MetadataField {
+    string name = 1;
+    oneof value {
+        string string_val = 2;
+        double double_val = 3;
+        float float_val = 4;
+        int64 long_val = 5;
+        int32 int_val = 6;
+        bool bool_val = 7;
+    }
+};
