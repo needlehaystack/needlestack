@@ -20,7 +20,7 @@ Needlestack
 Needlestack is a distributed vector search microservice.
 
 
-- Free software: MIT license
+- Free software: Apache License 2.0
 - Documentation: https://needlestack.readthedocs.io.
 
 
