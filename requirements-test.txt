@@ -1,4 +1,5 @@
 black==19.3b0
+coveralls==1.8.1
 flake8==3.7.8
 mypy==0.720
 mypy-protobuf==1.12

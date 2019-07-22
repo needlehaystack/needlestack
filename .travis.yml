@@ -28,7 +28,7 @@ script: docker-compose run --rm test
 
 # Send coverage report
 after_success:
-  - coveralls
+  - docker-compose run --rm test coveralls
 
 # Deploy to PyPi
 deploy:
