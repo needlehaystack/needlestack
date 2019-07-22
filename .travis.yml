@@ -18,6 +18,7 @@ before_install:
 
 # Install dependencies
 install:
+  - pip install grpcio-tools
   - make compile-proto
   - docker-compose build test
   - pip install coveralls
