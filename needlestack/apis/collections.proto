@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+import "needlestack/apis/neighbors.proto";
+
+
+/********************
+ *
+ * List Requests
+ * 
+ ********************/
+
+/* List collections loaded on cluster */
+message CollectionsRequest {
+    repeated string names = 1;
+};
+
+message CollectionsResponse {
+    repeated Collection collections = 1;
+};
+
+/********************
+ *
+ * Configure Requests
+ * 
+ ********************/
+
+
+/* Request to configure the provided collections */
+message CollectionConfigurationRequest {
+    repeated Collection collections = 1;
+    bool noop = 2;
+};
+
+/* Response of how collections are configured */
+message CollectionConfigurationResponse {
+    repeated Collection collections = 1;
+};
+
+/********************
+ *
+ * Load Requests
+ * 
+ ********************/
+
+/* Load collections on a Searcher node */
+message CollectionLoadRequest {
+};
+
+message CollectionLoadResponse {
+};
+
+/********************
+ *
+ * Components to Collections
+ * 
+ ********************/
+
+/* A collection name, its shards, and replication factor */
+message Collection {
+    string name = 1;
+    repeated Shard shards = 2;
+    uint32 replication_factor = 3;
+    bool enable_id_to_vector = 4;
+};
+
+/* A shard from a collection */
+message Shard {
+    // Name used to identify shard
+    string name = 1;
+
+    // Optional shard weight used to help distribute shards evenly among searcher
+    float weight = 2;
+
+    // Optional list of nodes the shard exists on
+    repeated Node replicas = 3;
+
+    // A source of the type of index to load
+    SpatialIndex index = 4;
+};
+
+/* A Searcher node that host shard replicas */
+message Node {
+
+    enum State {
+        ACTIVE = 0;
+        DOWN = 1;
+        BOOTING = 2;
+        RECOVERING = 3;
+    };
+
+    string hostport = 1;
+    State state = 2;
+    string ip_address = 3;
+    string hostname = 4;
+    int32 port = 5;
+}

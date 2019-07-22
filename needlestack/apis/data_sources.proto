@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+
+/* Contains a data source */
+message DataSource {
+    oneof source {
+        LocalDataSource local_data_source = 1;
+    }
+};
+
+/* Defines a local file */
+message LocalDataSource {
+    string filename = 1;
+}

@@ -1,0 +1,6 @@
+faiss==1.5.3
+grpcio==1.22.0
+grpcio-tools==1.22.0
+kazoo==2.6.1
+numpy==1.16.4
+protobuf==3.9.0

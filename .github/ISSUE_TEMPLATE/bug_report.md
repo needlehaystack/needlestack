@@ -20,9 +20,9 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **System (please complete the following information):**
- - Needlestack version [e.g. 0.1.0]
- - Python version [e.g. 3.7.4]
- - Operating System [e.g. Ubuntu 16.04]
+ - Needlestack version: [e.g. 0.1.0]
+ - Python version: [e.g. 3.7.4]
+ - Operating System: [e.g. Ubuntu 16.04]
 
 **Trackback**
 Provide any trackbacks from the bug.
