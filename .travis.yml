@@ -27,8 +27,12 @@ install:
 script: docker-compose run --rm test
 
 # Send coverage report
+# The .coverage file is made in a docker container,
+# this first line is a bandage to replace `/app`
+# with the current directory
 after_success:
-  - docker-compose run --rm test coveralls
+  - sed -i.bak 's/\/app/${$(pwd)//\//\\/}/g' .coverage
+  - coveralls
 
 # Deploy to PyPi
 deploy:
