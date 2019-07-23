@@ -5,6 +5,3 @@ mypy-protobuf==1.12
 pytest==5.0.1
 pytest-cov==2.7.1
 pytest-runner==5.1
-Sphinx==2.1.2
-sphinx-autodoc-typehints==1.6.0
-sphinxcontrib-napoleon==0.7

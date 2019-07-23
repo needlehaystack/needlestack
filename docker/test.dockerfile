@@ -13,5 +13,6 @@ WORKDIR /app
 
 RUN pip install -r /app/requirements-freeze.txt
 RUN pip install -r /app/requirements-test.txt
+RUN pip install -r /app/docs/requirements.txt
 
 RUN make compile-proto-test
