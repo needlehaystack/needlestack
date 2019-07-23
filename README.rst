@@ -36,13 +36,13 @@ Features
 Limitations
 -----------
 The current alpha builds have limitations that make them difficult to use in production.
-These should be address in future builds
+These should be addressed in future builds.
 
-Problems
-~~~~~~~~
+Caveats
+~~~~~~~
 
 - Vectors must be manually sharded, indexed, and serialized to disk as protobufs
-- When vector protobuf files update, ``MergerServicer`` and ``SearcherServicer`` cluster must be restarted
+- When shard protobuf files update, ``MergerServicer`` and ``SearcherServicer`` cluster must be restarted
 - Only kNN library currently supported is `Faiss <https://github.com/facebookresearch/faiss/>`_
 
 Solutions
