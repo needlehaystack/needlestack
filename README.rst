@@ -33,21 +33,23 @@ Features
 - Retrieve vectors by ID
 
 
-Caveats
--------
-These are some limitations of the current alpha builds
+Limitations
+-----------
+The current alpha builds have limitations that make them difficult to use in production.
+These should be address in future builds
 
-- Vectors must be sharded and indexed before loading to Needlestack
-- To reload updated vectors, all ``MergerServicer`` and ``SearcherServicer`` nodes must be restarted
-- Vectors must be saved locally to disk for Needlestack to load them
-- Only kNN library supported currently is `Faiss <https://github.com/facebookresearch/faiss/>`_
+Problems
+~~~~~~~~
 
+- Vectors must be manually sharded, indexed, and serialized to disk as protobufs
+- When vector protobuf files update, ``MergerServicer`` and ``SearcherServicer`` cluster must be restarted
+- Only kNN library currently supported is `Faiss <https://github.com/facebookresearch/faiss/>`_
 
-Next Steps
-----------
-These are valuable features to make Needlestack usable in production
+Solutions
+~~~~~~~~~
 
-- Endpoint to index vectors in realtime
-- Update vectors from pre-built data sources without restarting the cluster
-- Allow vectors to be loaded from data sources like S3 or GCS
+- Provide module automatically shard and serialize a collection of vectors
+- Provide gRPC endpoint to index vectors in realtime
+- Allow vectors to be loaded from various data sources (S3, GCS, etc)
+- Update vectors without restarting the cluster
 - Add support for other kNN libraries
