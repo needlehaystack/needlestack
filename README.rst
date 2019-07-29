@@ -42,14 +42,14 @@ Caveats
 ~~~~~~~
 
 - Vectors must be manually sharded, indexed, and serialized to disk as protobufs
-- When shard protobuf files update, ``MergerServicer`` and ``SearcherServicer`` cluster must be restarted
+- When shard protobuf files update, ``SearcherServicers`` in the cluster must be restarted
 - Only kNN library currently supported is `Faiss <https://github.com/facebookresearch/faiss/>`_
 
 Solutions
 ~~~~~~~~~
 
-- Provide module automatically shard and serialize a collection of vectors
-- Provide gRPC endpoint to index vectors in realtime
+- Provide module to automatically shard and serialize a collection of vectors
+- Provide gRPC endpoint to index vectors in real-time
 - Allow vectors to be loaded from various data sources (S3, GCS, etc)
 - Update vectors without restarting the cluster
 - Add support for other kNN libraries
