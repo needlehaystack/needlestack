@@ -45,12 +45,6 @@ clean-proto:
 	find . -name '*_pb2.pyi' -delete
 	find . -name '*_pb2_grpc.py'  -delete
 
-clean-docs:
-	rm -f docs/needlestack.rst
-	rm -f docs/needlestack.*.rst
-	rm -f docs/modules.rst
-	$(MAKE) -C docs clean
-
 test-all: compile-proto-test auto-format test lint test-typing
 
 auto-format:
@@ -69,3 +63,9 @@ test-typing:
 sphinx-docs: compile-proto clean-docs
 	sphinx-apidoc -o docs/ needlestack
 	$(MAKE) -C docs html
+
+clean-docs:
+	rm -f docs/needlestack.rst
+	rm -f docs/needlestack.*.rst
+	rm -f docs/modules.rst
+	$(MAKE) -C docs clean

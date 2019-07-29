@@ -7,6 +7,7 @@ Welcome to Needlestack's documentation!
 
    readme
    installation
+   design
    usage
    modules
    contributing

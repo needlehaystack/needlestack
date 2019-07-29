@@ -1,24 +1,22 @@
-.. highlight:: shell
-
 ============
 Contributing
 ============
 
 Contributions are welcomed and greatly appreciated!
-These can be done through submitting Github issues, fixing bugs, or implementing features.
-Please read through these guidelines to assure a smooth process.
+These can be done through submitting GitHub issues, fixing bugs, implementing features,
+and documentation. Please read through these guidelines to assure a smooth process.
 
 
-1. Github Issue Tracking
+1. GitHub Issue Tracking
 ------------------------
 
-All bugs and feature requests should be submitted through Github's
+All bugs and feature requests should be submitted through GitHub's
 issue tracking.
 
 1.1 Review Open Issues
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Check if the bug or feature is has already been submitted. The bugfix
+Check if the bug or feature has already been submitted. The bug-fix
 or feature could already be in active development
 
 1.2 Create New Issue
@@ -26,7 +24,7 @@ or feature could already be in active development
 
 If the bug or feature is not already reported, please open an issue at
 https://github.com/needlehaystack/needlestack/issues. Follow the templates
-and provide the information requested in the templates.
+and provide the information requested.
 
 
 2. Pick an Open Issue
@@ -71,7 +69,7 @@ with Docker and Docker-Compose
 5. Implement changes.
 
 6. Check that your code changes pass ``black``, ``pytest``, ``flake8``, and ``mypy``.
-   Note that ``black`` will autoformat all files inplace::
+   Note that ``black`` will auto-format all files in-place::
 
     $ docker-compose run --rm test
 
@@ -110,7 +108,7 @@ Follow these guidelines when submitting pull requests.
 5. Deploying
 ------------
 
-A note for maintainers for deploying to PyPi. Bump the package version and tag
+A note for maintainers deploying to PyPi. Bump the package version and tag
 the commit. Pushing new tags to GitHub will kick off a Travis CI pipeline to test
 and deploy the package to PyPi.
 

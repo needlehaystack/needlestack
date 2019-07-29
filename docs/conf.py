@@ -15,6 +15,29 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 
+# -- Compile Protobufs -------------------------------------------------------
+
+# Protobufs are not precompiled and need to be generated at Sphinx runtime.
+# This is a hack and should be made into an extension.
+import pkg_resources
+from glob import glob
+from grpc_tools import protoc
+
+_proto_include = pkg_resources.resource_filename('grpc_tools', '_proto')
+_project_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+_status_code = protoc.main(
+    [
+        f"-I{_project_dir}",
+        f"--python_out={_project_dir}",
+        f"--grpc_python_out={_project_dir}",
+        *glob(f"{_project_dir}/needlestack/apis/*.proto"),
+        f"-I{_proto_include}",
+        f"--proto_path={_proto_include}",
+        f"--proto_path={_project_dir}",
+    ]
+)
+
+
 # -- Project information -----------------------------------------------------
 
 project = 'Needlestack'
@@ -32,6 +55,7 @@ release = version
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
+    'sphinx.ext.autosectionlabel',
     'sphinxcontrib.napoleon',
     'sphinx_autodoc_typehints'
 ]
@@ -50,7 +74,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'nature'
+html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
