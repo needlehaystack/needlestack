@@ -7,36 +7,42 @@ version: '3.4'
 #
 #######################
 
-x-build-args:
-  args: &args 
-    - BASE_IMAGE=3.7.4-slim-stretch
+x-servicer-build: &servicer-build
+  build:
+    dockerfile: ./docker/needlestack.dockerfile
+    context: .
+    args:
+      - BASE_IMAGE=3.7.4-slim-stretch
+  image: "needlestack-app"
 
-x-environment:
-  environment: &environment
+x-test-build: &test-build
+  build:
+    dockerfile: ./docker/test.dockerfile
+    context: .
+    args:
+      - BASE_IMAGE=3.7.4-slim-stretch
+  image: "needlestack-test"
+
+x-environment: &environment
+  environment: 
     PYTHONPATH: '/app'
     LANG: 'en_US.UTF-8'
 
-x-searcher-grpc:
-  searcher-grpc-template: &searcher-grpc-template
-    build:
-      dockerfile: ./docker/needlestack.dockerfile
-      context: .
-      args: *args
-    environment: *environment
-    image: "needlestack-app"
-    volumes:
-      - ./:/app
-    depends_on:
-      - zoo1
-      - zoo2
-      - zoo3
-    command:
-      - python
-      - examples/run_searcher.py
+x-searcher-grpc-template: &searcher-grpc-template
+  <<: *servicer-build
+  <<: *environment
+  volumes:
+    - ./:/app
+  depends_on:
+    - zoo1
+    - zoo2
+    - zoo3
+  command:
+    - python
+    - examples/run_searcher.py
 
-x-zookeeper:
-  zookeeper-image: &zookeeper-image
-    image: zookeeper:3.4.13
+x-zookeeper-image: &zookeeper-image
+  image: zookeeper:3.5.5
 
 
 #######################
@@ -48,12 +54,8 @@ x-zookeeper:
 services:
 
   merger-grpc:
-    build:
-      dockerfile: ./docker/needlestack.dockerfile
-      context: .
-      args: *args
-    environment: *environment
-    image: "needlestack-app"
+    <<: *servicer-build
+    <<: *environment
     volumes:
       - ./:/app
     depends_on:
@@ -112,21 +114,13 @@ services:
       ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=zoo2:2888:3888 server.3=0.0.0.0:2888:3888
 
   test:
-    build:
-      dockerfile: ./docker/test.dockerfile
-      context: .
-      args: *args
+    <<: *test-build
     command: make test-all
-    image: "needlestack-test"
     volumes:
       - ./:/app
 
   docs:
-    build:
-      dockerfile: ./docker/test.dockerfile
-      context: .
-      args: *args
+    <<: *test-build
     command: make sphinx-docs
-    image: "needlestack-test"
     volumes:
       - ./:/app
