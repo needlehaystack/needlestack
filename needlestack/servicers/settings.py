@@ -7,13 +7,13 @@ class BaseConfig(object):
 
     Attributes:
         DEBUG: Attach a stream handler to console for logger
+        DEBUG_LOG_FORMAT: Format string for debug logger
         LOG_LEVEL: Level for logger
         LOG_FORMAT_DATE: Format string for date
-        DEBUG_LOG_FORMAT: Format string for debug logger
-        FILE_LOG_FORMAT: Format string for file logger
         LOG_FILE: Filepath to log file
-        LOG_FILE_MAX_BYTES: Max byte size for log file
         LOG_FILE_BACKUPS: Number of log files to keep in rotation
+        LOG_FILE_LOG_FORMAT: Format string for file logger
+        LOG_FILE_MAX_BYTES: Max byte size for log file
         MAX_WORKERS: Number of worker threads per gRPC server
         HOSTNAME: Hostname of node
         SERVICER_PORT: Port of gRPC server
@@ -23,18 +23,17 @@ class BaseConfig(object):
     """
 
     DEBUG = False
-
-    LOG_LEVEL = "WARNING"
-
-    LOG_FORMAT_DATE = "%Y-%m-%d %H:%M:%S"
     DEBUG_LOG_FORMAT = (
         "%(asctime)s [%(name)s] [%(threadName)-10s] [%(levelname)s] - %(message)s"
     )
-    FILE_LOG_FORMAT = "%(asctime)s [%(name)s] [%(thread)d] [%(process)d] [%(levelname)s] - %(message)s"
+
+    LOG_LEVEL = "WARNING"
+    LOG_FORMAT_DATE = "%Y-%m-%d %H:%M:%S"
 
     LOG_FILE: Optional[str] = None
-    LOG_FILE_MAX_BYTES: int
     LOG_FILE_BACKUPS: int
+    LOG_FILE_LOG_FORMAT = "%(asctime)s [%(name)s] [%(thread)d] [%(process)d] [%(levelname)s] - %(message)s"
+    LOG_FILE_MAX_BYTES: int
 
     MAX_WORKERS: int
     HOSTNAME: str
@@ -61,7 +60,7 @@ class LocalDockerConfig(BaseConfig):
     HOSTNAME = socket.gethostname()
     SERVICER_PORT = 50051
 
-    CLUSTER_NAME = "my_needlstack"
+    CLUSTER_NAME = "my_needlestack"
     HOSTPORT = f"{HOSTNAME}:{SERVICER_PORT}"
 
     ZOOKEEPER_HOSTS = ["zoo1:2181", "zoo2:2181", "zoo3:2181"]
@@ -82,7 +81,7 @@ class TestDockerConfig(BaseConfig):
     HOSTNAME = socket.gethostname()
     SERVICER_PORT = 50051
 
-    CLUSTER_NAME = "test_needlstack"
+    CLUSTER_NAME = "test_needlestack"
     HOSTPORT = f"{HOSTNAME}:{SERVICER_PORT}"
 
     ZOOKEEPER_HOSTS = ["zoo1:2181", "zoo2:2181", "zoo3:2181"]

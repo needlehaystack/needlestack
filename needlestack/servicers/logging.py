@@ -20,7 +20,7 @@ def configure_logger(config: BaseConfig):
     if config.LOG_FILE:
         add_file_handler(
             logger,
-            config.FILE_LOG_FORMAT,
+            config.LOG_FILE_LOG_FORMAT,
             config.LOG_FORMAT_DATE,
             config.LOG_FILE,
             config.LOG_FILE_MAX_BYTES,

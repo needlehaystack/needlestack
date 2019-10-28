@@ -5,6 +5,9 @@ import numpy as np
 from needlestack.apis import neighbors_pb2
 
 
+"""TODO: Rename SpatialIndex and create protobuf for query results"""
+
+
 class SpatialIndex(object):
     """Base class for spatial index implementations. Defines interfaces
     for populating data and performing kNN queries."""

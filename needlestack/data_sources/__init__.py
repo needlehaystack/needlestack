@@ -1,4 +1,3 @@
-from datetime import datetime
 from contextlib import contextmanager
 
 from needlestack.apis import data_sources_pb2
@@ -28,7 +27,7 @@ class DataSource(object):
         return data_source
 
     @property
-    def last_modified(self) -> datetime:
+    def last_modified(self) -> float:
         """Last time a data source was modified"""
         raise NotImplementedError()
 

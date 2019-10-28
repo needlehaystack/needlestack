@@ -6,6 +6,9 @@ from needlestack.apis import collections_pb2
 logger = logging.getLogger("needlestack")
 
 
+"""TODO: I would like to make it so balancers can still work when some items exists in some knapsacks already"""
+
+
 class Item(object):
     """Item that goes into a knapsack
 
