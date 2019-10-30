@@ -2,34 +2,33 @@ from typing import List, Tuple, Dict
 
 import numpy as np
 
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
+from needlestack.apis import serializers
 
 
-"""TODO: Rename SpatialIndex and create protobuf for query results"""
-
-
-class SpatialIndex(object):
-    """Base class for spatial index implementations. Defines interfaces
+class BaseIndex(object):
+    """Base class for index implementations. Defines interfaces
     for populating data and performing kNN queries."""
 
     @staticmethod
-    def from_proto(proto: neighbors_pb2.SpatialIndex) -> "SpatialIndex":
-        """Factory method to construct the correct implementation of a SpatialIndex
-        from a protobuf.
+    def from_proto(proto: indices_pb2.BaseIndex) -> "BaseIndex":
+        """Factory method to construct the correct implementation of a BaseIndex
+        from a protobuf. Specific index types are imported in this function
+        so their dependent packages do not need to be installed
 
         Args:
             proto: Protobuf defining how to load data for the index
         """
-        index = proto.WhichOneof("index")
-        if index == "faiss_index":
-            from needlestack.neighbors.faiss_indices import FaissIndex
+        index_type = proto.WhichOneof("index")
+        if index_type == "faiss_index":
+            from needlestack.indices.faiss_indices import FaissIndex
 
-            spatial_index = FaissIndex()
-            spatial_index.populate_from_proto(proto.faiss_index)
+            index = FaissIndex()
+            index.populate_from_proto(proto.faiss_index)
         else:
             raise ValueError("No valid index found from protobuf")
 
-        return spatial_index
+        return index
 
     @property
     def dimension(self) -> int:
@@ -42,16 +41,16 @@ class SpatialIndex(object):
         raise NotImplementedError()
 
     def populate_from_proto(self, proto):
-        """Populate SpatialIndex from protobuf defining data source
+        """Populate BaseIndex from protobuf defining data source
 
         Args:
             proto: Protobuf with data on how to populate a particular
-                SpatialIndex implementation
+                BaseIndex implementation
         """
         raise NotImplementedError()
 
     def populate(self, data: Dict):
-        """Populate SpatialIndex from dictionary
+        """Populate BaseIndex from dictionary
 
         Args:
             data: Dictionary of key, value pairs for attributes
@@ -66,7 +65,7 @@ class SpatialIndex(object):
         """Load data into memory"""
         raise NotImplementedError()
 
-    def _get_metadata_by_index(self, i: int) -> neighbors_pb2.Metadata:
+    def _get_metadata_by_index(self, i: int) -> indices_pb2.Metadata:
         raise NotImplementedError()
 
     def _get_vector_by_index(self, i: int) -> np.ndarray:
@@ -86,7 +85,7 @@ class SpatialIndex(object):
 
     def get_vector_and_metadata(
         self, id: str
-    ) -> Tuple[np.ndarray, neighbors_pb2.Metadata]:
+    ) -> Tuple[np.ndarray, indices_pb2.Metadata]:
         """Returns the vector and metadata for a particular item id
 
         Args:
@@ -100,9 +99,12 @@ class SpatialIndex(object):
         else:
             return None, None
 
-    def query(
-        self, X: np.ndarray, k: int
-    ) -> List[List[Tuple[float, neighbors_pb2.Metadata]]]:
+    def retrieve(self, id: str) -> indices_pb2.RetrievalResultItem:
+        vector, metadata = self.get_vector_and_metadata(id)
+        vector_proto = None if vector is None else serializers.ndarray_to_proto(vector)
+        return indices_pb2.RetrievalResultItem(vector=vector_proto, metadata=metadata)
+
+    def query(self, X: np.ndarray, k: int) -> List[List[indices_pb2.SearchResultItem]]:
         """Returns a list of list of knn query results.
         Each result is a tuple of (distance, metadata) pairs.
 
@@ -111,8 +113,22 @@ class SpatialIndex(object):
             k: Number of neighbors
         """
         dists, idxs = self.knn_search(X, k)
+        dtype = dists.dtype
         batches = []
         for dist, idx in zip(dists, idxs):
-            results = [(d, self._get_metadata_by_index(i)) for d, i in zip(dist, idx)]
+            if dtype == "float32" or dtype == "float16":
+                results = [
+                    indices_pb2.SearchResultItem(
+                        float_distance=d, metadata=self._get_metadata_by_index(i)
+                    )
+                    for d, i in zip(dist, idx)
+                ]
+            else:
+                results = [
+                    indices_pb2.SearchResultItem(
+                        double_distance=d, metadata=self._get_metadata_by_index(i)
+                    )
+                    for d, i in zip(dist, idx)
+                ]
             batches.append(results)
         return batches

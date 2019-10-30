@@ -44,14 +44,6 @@ needlestack.servicers.merger module
    :undoc-members:
    :show-inheritance:
 
-needlestack.servicers.protos module
------------------------------------
-
-.. automodule:: needlestack.servicers.protos
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 needlestack.servicers.searcher module
 -------------------------------------
 

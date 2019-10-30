@@ -29,17 +29,17 @@ Shard
 A ``Shard`` represents a partition of vectors in a ``Collection``.
 All ``Shards`` in a ``Collection`` exists in the same vector space.
 Each ``Shard`` can perform a kNN search over its partition of vectors.
-Each ``Shard`` contains a ``SpatialIndex`` which implements how kNN searches
+Each ``Shard`` contains a ``BaseIndex`` which implements how kNN searches
 are performed.
 
 Spatial Index
 ~~~~~~~~~~~~~
 
-A ``SpatialIndex`` implements how vectors are stored and searched.
+A ``BaseIndex`` implements how vectors are stored and searched.
 This is achieved using kNN indices from third party packages
-like ``faiss`` and ``scikit-learn``. A particular ``SpatialIndex``
+like ``faiss`` and ``scikit-learn``. A particular ``BaseIndex``
 will use an algorithm like brute-force, kd-tree, voronoi tessellations,
-etc. Metadata about each vector is stored in the ``SpatialIndex``.
+etc. Metadata about each vector is stored in the ``BaseIndex``.
 Metadata for a vector includes a string id and an optional list of
 primitive values (string, double, float, long, int, bool).
 

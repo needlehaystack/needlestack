@@ -1,6 +1,6 @@
 import pytest
 
-from needlestack.balancers import Item, Knapsack
+from needlestack.balancers.knapsack import Item, Knapsack
 
 
 def test_knapsack_add_item():

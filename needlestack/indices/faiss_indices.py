@@ -4,14 +4,14 @@ from typing import List, Dict
 import faiss
 import numpy as np
 
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
 from needlestack.data_sources import DataSource
-from needlestack.neighbors import SpatialIndex
+from needlestack.indices import BaseIndex
 
 
-class FaissIndex(SpatialIndex):
+class FaissIndex(BaseIndex):
 
-    """Implementation of a SpatialIndex using Faiss's index classes
+    """Implementation of a BaseIndex using Faiss's index classes
 
     Attributes:
         index: Faiss index object
@@ -22,7 +22,7 @@ class FaissIndex(SpatialIndex):
     """
 
     index: faiss.Index
-    metadatas: List[neighbors_pb2.Metadata]
+    metadatas: List[indices_pb2.Metadata]
     data_source: DataSource
     id2index: Dict[str, int]
     enable_id_to_vector: bool = False
@@ -35,7 +35,7 @@ class FaissIndex(SpatialIndex):
     def count(self):
         return self.index.ntotal
 
-    def populate_from_proto(self, proto: neighbors_pb2.FaissIndex):
+    def populate_from_proto(self, proto: indices_pb2.FaissIndex):
         self.data_source = DataSource.from_proto(proto.data_source)
 
     def populate(self, data):
@@ -47,13 +47,13 @@ class FaissIndex(SpatialIndex):
             faiss.write_index(self.index, f.name)
             index_binary = f.read()
 
-        return neighbors_pb2.FaissIndex(
+        return indices_pb2.FaissIndex(
             index_binary=index_binary, metadatas=self.metadatas
         )
 
     def load(self):
         with self.data_source.get_content() as content:
-            proto = neighbors_pb2.FaissIndex.FromString(content.read())
+            proto = indices_pb2.FaissIndex.FromString(content.read())
 
         with tempfile.NamedTemporaryFile() as f:
             f.write(proto.index_binary)

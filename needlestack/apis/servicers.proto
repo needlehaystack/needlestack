@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 import "needlestack/apis/collections.proto";
-import "needlestack/apis/neighbors.proto";
+import "needlestack/apis/indices.proto";
 import "needlestack/apis/tensors.proto";
 
 
@@ -25,7 +25,7 @@ service Searcher {
     rpc Search (SearchRequest) returns (SearchResponse);
     rpc SearchStream (SearchRequest) returns (stream SearchResultItem);
     rpc Retrieve (RetrieveRequest) returns (RetrieveResponse);
-    rpc CollectionLoad (CollectionLoadRequest) returns (CollectionLoadResponse);
+    rpc CollectionLoad (CollectionsLoadRequest) returns (CollectionsLoadResponse);
 };
 
 /********************
@@ -50,17 +50,6 @@ message SearchRequest {
 
 message SearchResponse {
     repeated SearchResultItem items = 1;
-    repeated string headers = 2;
-};
-
-/* A single search result */
-message SearchResultItem {
-    string id = 1;
-    oneof distance {
-        float float_distance = 2;
-        double double_distance = 3;
-    }
-    Metadata metadata = 4;
 };
 
 /********************
@@ -79,7 +68,5 @@ message RetrieveRequest {
 };
 
 message RetrieveResponse {
-    string id = 1;
-    NDArray vector = 2;
-    Metadata metadata = 3;
+    RetrievalResultItem item = 1;
 };

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "needlestack/apis/neighbors.proto";
+import "needlestack/apis/indices.proto";
 
 
 /********************
@@ -11,6 +11,7 @@ import "needlestack/apis/neighbors.proto";
 
 /* List collections loaded on cluster */
 message CollectionsRequest {
+    // Names of collecitons to return, otherwise return all collections
     repeated string names = 1;
 };
 
@@ -36,6 +37,28 @@ message CollectionConfigurationResponse {
     repeated Collection collections = 1;
 };
 
+
+/*
+message CollectionsAddRequest {
+    repeated Collections = 1;
+    bool noop = 2;
+};
+
+message CollectionsAddResponse {
+    repeated Collection collections = 1;
+    bool complete = 2;
+};
+
+message CollectionsDeleteRequest {
+    repeated string names = 1;
+};
+
+message CollectionsDeleteResponse {
+    repeated string names = 1;
+    bool complete = 2;
+};
+*/
+
 /********************
  *
  * Load Requests
@@ -43,10 +66,10 @@ message CollectionConfigurationResponse {
  ********************/
 
 /* Load collections on a Searcher node */
-message CollectionLoadRequest {
+message CollectionsLoadRequest {
 };
 
-message CollectionLoadResponse {
+message CollectionsLoadResponse {
 };
 
 /********************
@@ -75,7 +98,7 @@ message Shard {
     repeated Node replicas = 3;
 
     // A source of the type of index to load
-    SpatialIndex index = 4;
+    BaseIndex index = 4;
 };
 
 /* A Searcher node that host shard replicas */

@@ -4,7 +4,7 @@ from typing import Any, Tuple, Optional, List, Union
 import numpy as np
 
 from needlestack.apis import tensors_pb2
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
 
 
 TYPE_TO_ENUM = {
@@ -92,7 +92,7 @@ def metadata_list_to_proto(
     fields_list: List[Tuple],
     fieldtypes: Optional[Tuple[str]] = None,
     fieldnames: Optional[Tuple[str]] = None,
-) -> List[neighbors_pb2.Metadata]:
+) -> List[indices_pb2.Metadata]:
     """Serialize a set of items with metadata fields
 
     Args:
@@ -112,7 +112,7 @@ def metadata_to_proto(
     fields: Tuple,
     fieldtypes: Optional[Tuple[str]] = None,
     fieldnames: Optional[Tuple[str]] = None,
-) -> neighbors_pb2.Metadata:
+) -> indices_pb2.Metadata:
     """Serialize a set of metadata fields for some item
 
     Args:
@@ -127,7 +127,7 @@ def metadata_to_proto(
         metadata_field_to_proto(field, fieldtype, fieldname)
         for field, fieldtype, fieldname in zip(fields, _fieldtypes, _fieldnames)
     ]
-    return neighbors_pb2.Metadata(id=id, fields=metadata_fields)
+    return indices_pb2.Metadata(id=id, fields=metadata_fields)
 
 
 TYPE_TO_FIELD_TYPE = {str: "string", float: "double", int: "long", bool: "bool"}
@@ -137,7 +137,7 @@ def metadata_field_to_proto(
     field: Union[str, int, float, bool],
     fieldtype: Optional[str] = None,
     fieldname: Optional[str] = None,
-) -> neighbors_pb2.MetadataField:
+) -> indices_pb2.MetadataField:
     """Serialize some python value to a metadata field proto
 
     Args:
@@ -145,7 +145,7 @@ def metadata_field_to_proto(
         fieldtype: Explicit type to serialize the field
         fieldname: Optional name for this metadata field
     """
-    proto = neighbors_pb2.MetadataField(name=fieldname)
+    proto = indices_pb2.MetadataField(name=fieldname)
 
     fieldtype = fieldtype if fieldtype else TYPE_TO_FIELD_TYPE.get(type(field))
     if fieldtype is None:

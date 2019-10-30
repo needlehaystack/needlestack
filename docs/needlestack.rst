@@ -11,7 +11,7 @@ Subpackages
    needlestack.cluster_managers
    needlestack.collections
    needlestack.data_sources
-   needlestack.neighbors
+   needlestack.indices
    needlestack.servicers
 
 Module contents

@@ -18,8 +18,8 @@ class BaseConfig(object):
         HOSTNAME: Hostname of node
         SERVICER_PORT: Port of gRPC server
         CLUSTER_NAME: Name for Needlestack cluster
-        HOSTPORT: Hostport to gRPC server
         ZOOKEEPER_HOSTS: List of Zookeeper host for cluster manager
+        hostport: Hostport to gRPC server
     """
 
     DEBUG = False
@@ -44,6 +44,10 @@ class BaseConfig(object):
 
     ZOOKEEPER_HOSTS: List[str]
 
+    @property
+    def hostport(self):
+        return f"{self.HOSTNAME}:{self.SERVICER_PORT}"
+
 
 class LocalDockerConfig(BaseConfig):
     """Configs for local development environment"""
@@ -61,7 +65,6 @@ class LocalDockerConfig(BaseConfig):
     SERVICER_PORT = 50051
 
     CLUSTER_NAME = "my_needlestack"
-    HOSTPORT = f"{HOSTNAME}:{SERVICER_PORT}"
 
     ZOOKEEPER_HOSTS = ["zoo1:2181", "zoo2:2181", "zoo3:2181"]
 
@@ -82,6 +85,5 @@ class TestDockerConfig(BaseConfig):
     SERVICER_PORT = 50051
 
     CLUSTER_NAME = "test_needlestack"
-    HOSTPORT = f"{HOSTNAME}:{SERVICER_PORT}"
 
     ZOOKEEPER_HOSTS = ["zoo1:2181", "zoo2:2181", "zoo3:2181"]

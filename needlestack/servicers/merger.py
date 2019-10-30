@@ -100,7 +100,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         for future in futures:
             result = future.result()
-            if result.id != "":
+            if result.HasField("item"):
                 return result
 
         context.set_code(grpc.StatusCode.NOT_FOUND)
@@ -119,7 +119,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
             futures = []
             for node in nodes:
                 stub = clients.get_searcher_stub(node.hostport)
-                subrequest = collections_pb2.CollectionLoadRequest()
+                subrequest = collections_pb2.CollectionsLoadRequest()
                 future = stub.CollectionLoad.future(subrequest)
                 futures.append((node.hostport, future))
 

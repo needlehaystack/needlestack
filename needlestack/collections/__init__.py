@@ -1,2 +1,2 @@
-from needlestack.collection import Collection
-from needlestack.shard import Shard
+from needlestack.collections.collection import Collection
+from needlestack.collections.shard import Shard

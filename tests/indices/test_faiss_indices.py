@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
 
 
 def test_load(faiss_index_4d):
@@ -25,9 +25,8 @@ def test_query(faiss_index_4d, X, k):
     results = faiss_index_4d.query(X, k)
 
     for result in results:
-        for dist, metadata in result:
-            assert isinstance(dist, np.float32)
-            assert isinstance(metadata, neighbors_pb2.Metadata)
+        for item in result:
+            assert isinstance(item, indices_pb2.SearchResultItem)
 
 
 @pytest.mark.parametrize(
@@ -60,24 +59,22 @@ def test_knn_search_bad_shape(faiss_index_4d, X, k):
 
 
 @pytest.mark.parametrize("index", [0, 1, 2, 3])
-def test_get_vector_and_metadata(faiss_index_4d, index):
+def test_retrieve(faiss_index_4d, index):
     faiss_index_4d.enable_id_to_vector = True
     faiss_index_4d.load()
 
     id = faiss_index_4d._get_metadata_by_index(index).id
-    vector, metadata = faiss_index_4d.get_vector_and_metadata(id)
-    assert isinstance(vector, np.ndarray)
-    assert isinstance(metadata, neighbors_pb2.Metadata)
+    item = faiss_index_4d.retrieve(id)
+    assert len(item.ListFields()) != 0
 
 
 @pytest.mark.parametrize("id", ["doesnt", "exists"])
-def test_get_vector_and_metadata_none(faiss_index_4d, id):
+def test_retrieve_none(faiss_index_4d, id):
     faiss_index_4d.enable_id_to_vector = True
     faiss_index_4d.load()
 
-    vector, metadata = faiss_index_4d.get_vector_and_metadata(id)
-    assert vector is None
-    assert metadata is None
+    item = faiss_index_4d.retrieve(id)
+    assert len(item.ListFields()) == 0
 
 
 def test_get_vector_by_index(faiss_index_4d):

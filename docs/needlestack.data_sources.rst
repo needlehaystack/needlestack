@@ -12,6 +12,14 @@ needlestack.data\_sources.local module
    :undoc-members:
    :show-inheritance:
 
+needlestack.data\_sources.source module
+---------------------------------------
+
+.. automodule:: needlestack.data_sources.source
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

@@ -3,8 +3,8 @@ import os
 import faiss
 import numpy as np
 
-from needlestack.apis import data_sources_pb2, neighbors_pb2, collections_pb2, serializers
-from needlestack.neighbors.faiss_indices import FaissIndex
+from needlestack.apis import data_sources_pb2, indices_pb2, collections_pb2, serializers
+from needlestack.indices.faiss_indices import FaissIndex
 
 
 def create_test_data_with_proto(noop=True):
@@ -55,8 +55,8 @@ def create_test_data_with_proto(noop=True):
 
             shard_proto = collections_pb2.Shard(
                 name=shard_name,
-                index=neighbors_pb2.SpatialIndex(
-                    faiss_index=neighbors_pb2.FaissIndex(
+                index=indices_pb2.BaseIndex(
+                    faiss_index=indices_pb2.FaissIndex(
                         data_source=data_sources_pb2.DataSource(
                             local_data_source=data_sources_pb2.LocalDataSource(
                                 filename=proto_filename

@@ -4,18 +4,18 @@ import numpy as np
 
 from needlestack.apis import collections_pb2
 from needlestack.apis import data_sources_pb2
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
 from needlestack.apis import serializers
 from needlestack.collections.collection import Collection
 from needlestack.collections.shard import Shard
-from needlestack.neighbors import SpatialIndex
-from needlestack.neighbors.faiss_indices import FaissIndex
+from needlestack.indices import BaseIndex
+from needlestack.indices.faiss_indices import FaissIndex
 
 
 @pytest.fixture
 def faiss_index_4d(tmpdir):
     proto = gen_random_faiss_index_proto(tmpdir, dimension=4, size=10)
-    yield SpatialIndex.from_proto(proto)
+    yield BaseIndex.from_proto(proto)
 
 
 @pytest.fixture
@@ -77,8 +77,8 @@ def gen_random_faiss_index_proto(tmpdir, dimension, size, name="test_index", see
     with open(data_filename, "wb") as f:
         f.write(proto.SerializeToString())
 
-    return neighbors_pb2.SpatialIndex(
-        faiss_index=neighbors_pb2.FaissIndex(
+    return indices_pb2.BaseIndex(
+        faiss_index=indices_pb2.FaissIndex(
             data_source=data_sources_pb2.DataSource(
                 local_data_source=data_sources_pb2.LocalDataSource(
                     filename=data_filename

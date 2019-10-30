@@ -27,7 +27,6 @@ settings fields.
         MAX_WORKERS = 10
         HOSTNAME = socket.gethostname()
         SERVICER_PORT = 50051
-        HOSTPORT = f"{HOSTNAME}:{SERVICER_PORT}"
 
         CLUSTER_NAME = "my_cluster"
         ZOOKEEPER_HOSTS = [

@@ -7,7 +7,6 @@ from needlestack.apis import collections_pb2
 from needlestack.apis import servicers_pb2
 from needlestack.apis import servicers_pb2_grpc
 from needlestack.apis import serializers
-from needlestack.servicers import protos
 from needlestack.collections.collection import Collection
 from needlestack.cluster_managers import ClusterManager
 from needlestack.servicers.decorators import unhandled_exception_rpc
@@ -50,11 +49,7 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
 
         if collection.dimension == X.shape[1]:
             results = collection.query(X, k, request.shard_names)
-            items = [
-                protos.create_result_item(dist, metadata)
-                for i, (dist, metadata) in enumerate(results)
-                if i < k
-            ]
+            items = [item for i, item in enumerate(results) if i < k]
             return servicers_pb2.SearchResponse(items=items)
         else:
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
@@ -66,15 +61,13 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
     @unhandled_exception_rpc(servicers_pb2.RetrieveResponse)
     def Retrieve(self, request, context):
         collection = self.get_collection(request.collection_name)
-        vector, metadata = collection.get_vector_and_metadata(
-            request.id, request.shard_names
-        )
-        if vector is not None:
-            return protos.create_retrieval_item(vector, metadata)
+        item = collection.retrieve(request.id, request.shard_names)
+        if item is not None:
+            return servicers_pb2.RetrieveResponse(item=item)
         else:
             return servicers_pb2.RetrieveResponse()
 
-    @unhandled_exception_rpc(collections_pb2.CollectionLoadResponse)
+    @unhandled_exception_rpc(collections_pb2.CollectionsLoadResponse)
     def CollectionLoad(self, request, context):
         self.load_collections()
-        return collections_pb2.CollectionLoadResponse()
+        return collections_pb2.CollectionsLoadResponse()

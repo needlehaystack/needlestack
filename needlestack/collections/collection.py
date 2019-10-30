@@ -1,9 +1,9 @@
 import heapq
-from typing import List, Tuple, Dict, Iterable, Union
+from typing import List, Dict, Iterable
 
 import numpy as np
 
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
 from needlestack.apis import collections_pb2
 from needlestack.collections.shard import Shard
 
@@ -57,17 +57,19 @@ class Collection(object):
 
     def query(
         self, X: np.ndarray, k: int, shard_names: List[str]
-    ) -> Iterable[Tuple[float, neighbors_pb2.Metadata]]:
+    ) -> Iterable[indices_pb2.SearchResultItem]:
         shard_results = [
             self.shards[shard_name].query(X, k) for shard_name in shard_names
         ]
-        return heapq.merge(*shard_results, key=lambda x: x[0])
+        return heapq.merge(
+            *shard_results, key=lambda x: x.float_distance or x.double_distance
+        )
 
-    def get_vector_and_metadata(
+    def retrieve(
         self, id: str, shard_names: List[str]
-    ) -> Union[Tuple[np.ndarray, neighbors_pb2.Metadata], Tuple[None, None]]:
+    ) -> indices_pb2.RetrievalResultItem:
         for shard_name in shard_names:
-            vector, metadata = self.shards[shard_name].get_vector_and_metadata(id)
-            if vector is not None:
-                return vector, metadata
-        return None, None
+            retrieval_item = self.shards[shard_name].retrieve(id)
+            if retrieval_item is not None:
+                return retrieval_item
+        return indices_pb2.RetrievalResultItem()
