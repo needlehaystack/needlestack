@@ -42,6 +42,7 @@ class BaseConfig(object):
     CLUSTER_NAME: str
     HOSTPORT: str
 
+    ZOOKEEPER_ROOT = "/needlestack"
     ZOOKEEPER_HOSTS: List[str]
 
     @property

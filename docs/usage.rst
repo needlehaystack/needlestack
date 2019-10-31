@@ -46,7 +46,7 @@ settings fields.
         def main():
             config = MyNeedlestackConfig()
             server = factory.create_server(config)
-            zk = factory.create_zookeeper_client(config)
+            zk = factory.create_zookeeper_cluster_manager(config)
             factory.get_merger_servicer(server, zk)
             factory.serve(server)
 
@@ -57,7 +57,7 @@ settings fields.
         def main():
             config = MyNeedlestackConfig()
             server = factory.create_server(config)
-            zk = factory.create_zookeeper_client(config)
+            zk = factory.create_zookeeper_cluster_manager(config)
             factory.get_searcher_servicer(server, zk)
             factory.serve(server)
 
@@ -70,7 +70,7 @@ settings fields.
         def main():
             config = MyNeedlestackConfig()
             server = factory.create_server(config)
-            zk = factory.create_zookeeper_client(config)
+            zk = factory.create_zookeeper_cluster_manager(config)
             factory.get_merger_servicer(server, zk)
             factory.get_searcher_servicer(server, zk)
             factory.serve(server)

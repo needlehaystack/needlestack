@@ -33,14 +33,17 @@ def create_server(config: BaseConfig) -> _Server:
     return server
 
 
-def create_zookeeper_client(config: BaseConfig) -> ZookeeperClusterManager:
+def create_zookeeper_cluster_manager(config: BaseConfig) -> ZookeeperClusterManager:
     """Create a Zookeeper client for cluster managment.
 
     Args:
         config: Config with settings on how to set up a Zookeeper client
     """
     return ZookeeperClusterManager(
-        config.CLUSTER_NAME, config.hostport, config.ZOOKEEPER_HOSTS
+        config.CLUSTER_NAME,
+        config.hostport,
+        config.ZOOKEEPER_HOSTS,
+        config.ZOOKEEPER_ROOT,
     )
 
 

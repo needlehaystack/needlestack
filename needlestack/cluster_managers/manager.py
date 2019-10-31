@@ -15,14 +15,23 @@ class ClusterManager(object):
     def clean(self):
         raise NotImplementedError()
 
-    def configure_collections(self, collections: List[collections_pb2.Collection]):
-        """Configure a list of collections into Zookeeper
-        """
+    def add_collections(
+        self, collections: List[collections_pb2.Collection]
+    ) -> List[collections_pb2.Collection]:
         raise NotImplementedError()
 
-    def get_collections_to_load(self) -> List[collections_pb2.Collection]:
-        """Get a list of collections and shards to load into Searcher servicer
-        """
+    def delete_collections(self, collection_names: List[str]) -> List[str]:
+        raise NotImplementedError()
+
+    def list_nodes(self) -> List[collections_pb2.Node]:
+        raise NotImplementedError()
+
+    def list_collections(
+        self, collection_names: Optional[List[str]] = None
+    ) -> List[collections_pb2.Collection]:
+        raise NotImplementedError()
+
+    def list_local_collections(self) -> List[collections_pb2.Collection]:
         raise NotImplementedError()
 
     def get_searchers(
@@ -31,12 +40,4 @@ class ClusterManager(object):
         """Get all active searches for specified shards in a collection. If no shards are provided
         then return all shards.
         """
-        raise NotImplementedError()
-
-    def get_live_nodes(self) -> List[collections_pb2.Node]:
-        raise NotImplementedError()
-
-    def get_collections(
-        self, collection_names: Optional[List[str]] = None
-    ) -> List[collections_pb2.Collection]:
         raise NotImplementedError()
