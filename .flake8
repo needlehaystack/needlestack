@@ -1,6 +1,0 @@
-[flake8]
-ignore = E501,W503
-builtins = unicode
-tee = True
-exclude = env,venv,examples,*_pb2*,__init__.py
-max-complexity = 9

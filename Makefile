@@ -43,13 +43,12 @@ clean-test:
 clean-proto:
 	find . -name '*_pb2.py' -delete
 	find . -name '*_pb2.pyi' -delete
-	find . -name '*_pb2_grpc.py'  -delete
+	find . -name '*_pb2_grpc.py' -delete
 
 test-all: compile-proto-test auto-format test lint test-typing
 
 auto-format:
-	black --target-version py36 --exclude ".*_pb2(_grpc)?\.py" needlestack
-	black --target-version py36 --exclude ".*_pb2(_grpc)?\.py" tests
+	black needlestack tests
 
 test:
 	pytest
