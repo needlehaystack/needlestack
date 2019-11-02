@@ -2,7 +2,7 @@ import logging
 import signal
 import time
 from copy import deepcopy
-from typing import List
+from typing import List, Optional
 
 from kazoo.exceptions import NodeExistsError
 from kazoo.client import KazooClient, KazooState
@@ -45,11 +45,6 @@ class ZookeeperClusterManager(ClusterManager):
                         ...
     """
 
-    ACTIVE = collections_pb2.Node.State.ACTIVE
-    DOWN = collections_pb2.Node.State.DOWN
-    BOOTING = collections_pb2.Node.State.BOOTING
-    RECOVERING = collections_pb2.Node.State.RECOVERING
-
     cluster_name: str
     hostport: str
     zk: KazooClient
@@ -63,11 +58,7 @@ class ZookeeperClusterManager(ClusterManager):
         self.zookeeper_root = zookeeper_root
         self.zk = KazooClient(hosts=hosts)
         self.zk.add_listener(self.zk_listener)
-        self.zk.start()
         self.cache = TreeCache(self.zk, self.base_znode)
-        self.cache.start()
-        signal.signal(signal.SIGINT, self.signal_listener)
-        signal.signal(signal.SIGTERM, self.signal_listener)
 
     @property
     def base_znode(self):
@@ -103,7 +94,34 @@ class ZookeeperClusterManager(ClusterManager):
             znode += "/" + hostport
         return znode
 
-    def up(self):
+    def startup(self):
+        self.zk.start()
+        self.cache.start()
+        signal.signal(signal.SIGINT, self.signal_listener)
+        signal.signal(signal.SIGTERM, self.signal_listener)
+        self.zk.ensure_path(self.live_nodes_znode)
+        self.zk.ensure_path(self.collections_znode)
+
+    def shutdown(self):
+        self.cache.close()
+        self.zk.stop()
+        self.zk.close()
+
+    def cleanup(self):
+        logger.info(f"Removing ZNodes via cleanup")
+        transaction = self.zk.transaction()
+
+        for collection in self.list_local_collections():
+            for shard in collection.shards:
+                for replica in shard.replicas:
+                    znode = self.replica_znode(
+                        collection.name, shard.name, replica.hostport
+                    )
+                    transaction.delete(znode)
+
+        results = transaction.commit()
+
+    def connect_searcher(self):
         for i in range(5):
             try:
                 self.zk.create(self.this_node_znode, ephemeral=True, makepath=True)
@@ -116,30 +134,28 @@ class ZookeeperClusterManager(ClusterManager):
                 time.sleep(5)
         logger.error(f"Could not created ephemeral ZNode {self.this_node_znode}")
 
-    def active(self):
-        for znode in self._list_local_replica_znodes():
-            self.zk.set(znode, self.ACTIVE)
-            logger.info(f"Set ZNode {znode} active")
+    def set_state(self, state, collection_name=None, shard_name=None, hostport=None):
+        transaction = self.zk.transaction()
 
-    def down(self):
-        for znode in self._list_local_replica_znodes():
-            self.zk.set(znode, self.DOWN)
-            logger.info(f"Set ZNode {znode} down")
+        collections = [collection_name] if collection_name else None
+        for collection in self._list_collections(
+            collections, hostport=hostport, load_replica=False
+        ):
+            logger.info(f"Set states for {collection.name} shard ZNodes")
+            for shard in collection.shards:
+                for replica in shard.replicas:
+                    znode = self.replica_znode(
+                        collection.name, shard.name, replica.hostport
+                    )
+                    transaction.set_data(znode, state)
 
-    def clean(self):
-        logger.info(f"Removing ZNodes via clean")
-        for znode in self._list_local_replica_znodes():
-            self.zk.delete(znode)
-            logger.info(f"Removed ZNode {znode}")
+        results = transaction.commit()
 
-    def close(self):
-        self.cache.close()
-        self.zk.stop()
-        self.zk.close()
+    def set_local_state(self, state, collection_name=None, shard_name=None):
+        self.set_state(state, collection_name, shard_name, self.hostport)
 
     def signal_listener(self, signum, frame):
-        self.down()
-        self.close()
+        self.shutdown()
 
     def zk_listener(self, state):
         if state == KazooState.LOST:
@@ -151,8 +167,6 @@ class ZookeeperClusterManager(ClusterManager):
 
     def add_collections(self, collections):
         """Configure a list of collections into Zookeeper
-
-        TODO: Make operations in a transaction.
         """
         transaction = self.zk.transaction()
 
@@ -161,11 +175,13 @@ class ZookeeperClusterManager(ClusterManager):
             collection_copy.ClearField("shards")
             collection_znode = self.collection_znode(collection.name)
             transaction.create(collection_znode, collection_copy.SerializeToString())
+            transaction.create(self.shard_znode(collection.name))
             for shard in collection.shards:
                 shard_copy = deepcopy(shard)
                 shard_copy.ClearField("replicas")
                 shard_znode = self.shard_znode(collection.name, shard.name)
                 transaction.create(shard_znode, shard_copy.SerializeToString())
+                transaction.create(self.replica_znode(collection.name, shard.name))
                 for replica in shard.replicas:
                     replica_znode = self.replica_znode(
                         collection.name, shard.name, replica.hostport
@@ -173,7 +189,6 @@ class ZookeeperClusterManager(ClusterManager):
                     transaction.create(replica_znode, self.BOOTING)
 
         results = transaction.commit()
-        logger.info(results)
         return collections
 
     def delete_collections(self, collection_names):
@@ -188,6 +203,17 @@ class ZookeeperClusterManager(ClusterManager):
         return nodes
 
     def list_collections(self, collection_names=None):
+        return self._list_collections(collection_names)
+
+    def list_local_collections(self):
+        return self._list_collections(hostport=self.hostport)
+
+    def _list_collections(
+        self,
+        collection_names: Optional[List[str]] = None,
+        hostport: Optional[str] = None,
+        load_replica: Optional[bool] = True,
+    ) -> List[collections_pb2.Collection]:
         collections = []
 
         collection_names = collection_names or self.zk.get_children(
@@ -201,48 +227,16 @@ class ZookeeperClusterManager(ClusterManager):
 
                 replicas = []
                 replicas_znode = self.replica_znode(collection_name, shard_name)
-                for hostport in self.zk.get_children(replicas_znode):
-                    replica_znode = self.replica_znode(
-                        collection_name, shard_name, hostport
-                    )
-                    state, _ = self.zk.get(replica_znode)
-                    node_proto = collections_pb2.Node(hostport=hostport, state=state)
-                    replicas.append(node_proto)
-
-                shard_znode = self.shard_znode(collection_name, shard_name)
-                shard_data, _ = self.zk.get(shard_znode)
-                shard_proto = collections_pb2.Shard.FromString(shard_data)
-                shard_proto.replicas.extend(replicas)
-                shards.append(shard_proto)
-
-            collection_znode = self.collection_znode(collection_name)
-            collection_data, _ = self.zk.get(collection_znode)
-            collection_proto = collections_pb2.Collection.FromString(collection_data)
-            collection_proto.shards.extend(shards)
-            collections.append(collection_proto)
-
-        return collections
-
-    def list_local_collections(self):
-        collections = []
-
-        for collection_name in self.zk.get_children(self.collections_znode):
-
-            shards = []
-            shards_znode = self.shard_znode(collection_name)
-            for shard_name in self.zk.get_children(shards_znode):
-
-                replicas = []
-                replicas_znode = self.replica_znode(collection_name, shard_name)
-                for hostport in self.zk.get_children(replicas_znode):
-                    if hostport == self.hostport:
+                for replica in self.zk.get_children(replicas_znode):
+                    if hostport == replica or hostport is None:
                         replica_znode = self.replica_znode(
-                            collection_name, shard_name, hostport
+                            collection_name, shard_name, replica
                         )
-                        state, _ = self.zk.get(replica_znode)
-                        node_proto = collections_pb2.Node(
-                            hostport=hostport, state=state
+                        state, _ = (
+                            self.zk.get(replica_znode) if load_replica else (None, None)
                         )
+                        state = ZookeeperClusterManager.state_to_enum(state)
+                        node_proto = collections_pb2.Node(hostport=replica, state=state)
                         replicas.append(node_proto)
 
                 if replicas:
@@ -300,14 +294,3 @@ class ZookeeperClusterManager(ClusterManager):
             hostports = active_hostports
 
         return hostports
-
-    def _list_local_replica_znodes(self):
-        znodes = []
-        for collection in self.list_local_collections():
-            for shard in collection.shards:
-                for replica in shard.replicas:
-                    znode = self.replica_znode(
-                        collection.name, shard.name, replica.hostport
-                    )
-                    znodes.append(znode)
-        return znodes

@@ -2,6 +2,7 @@ import os
 
 import faiss
 import numpy as np
+from google.protobuf import text_format
 
 from needlestack.apis import data_sources_pb2, indices_pb2, collections_pb2, serializers
 from needlestack.indices.faiss_indices import FaissIndex
@@ -28,6 +29,7 @@ def create_test_data_with_proto(noop=True):
 
         for shard_name in shards:
             proto_filename = os.path.join(data_dir, f"{collection_name}__{shard_name}.pb")
+
             if not noop:
                 os.makedirs(data_dir, exist_ok=True)
 
@@ -76,4 +78,19 @@ def create_test_data_with_proto(noop=True):
         )
         collection_protos.append(collection_proto)
 
+    if not noop:
+        request_filename = os.path.join(data_dir, f"collection_add_request.pbtxt")
+        request = collections_pb2.CollectionsAddRequest(collections=collection_protos)
+
+        with open(request_filename, "w") as f:
+            f.write(text_format.MessageToString(request))
+
     return collection_protos
+
+
+def main():
+    create_test_data_with_proto(False)
+
+
+if __name__ == "__main__":
+    main()

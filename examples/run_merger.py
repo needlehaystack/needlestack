@@ -9,8 +9,9 @@ logging.getLogger("kazoo").setLevel("WARN")
 def main():
     config = LocalDockerConfig()
     server = factory.create_server(config)
-    zk = factory.create_zookeeper_cluster_manager(config)
-    servicer = factory.get_merger_servicer(server, zk)
+    manager = factory.create_zookeeper_cluster_manager(config)
+    manager.startup()
+    servicer = factory.get_merger_servicer(server, manager)
     factory.serve(server)
 
 

@@ -24,24 +24,6 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
     def __init__(self, cluster_manager: ClusterManager):
         self.cluster_manager = cluster_manager
 
-    def get_searcher_hostports(
-        self, collection_name: str, shard_names: List[str] = None
-    ) -> List[Tuple[str, List[str]]]:
-        shard_hostports = self.cluster_manager.get_searchers(
-            collection_name, shard_names
-        )
-
-        shard_to_host = {}
-        for shard_name, hostports in shard_hostports:
-            shard_to_host[shard_name] = random.choice(hostports)
-
-        host_to_shards: Dict[str, List] = {}
-        for shard, host in shard_to_host.items():
-            host_to_shards[host] = host_to_shards.get(host, [])
-            host_to_shards[host].append(shard)
-
-        return list(host_to_shards.items())
-
     @unhandled_exception_rpc(servicers_pb2.SearchResponse)
     def Search(self, request, context):
 
@@ -72,8 +54,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
             items = [
                 item for i, item in enumerate(merged_item_batches) if i < request.count
             ]
-            headers = subsearch_results[0].headers
-            return servicers_pb2.SearchResponse(items=items, headers=headers)
+            return servicers_pb2.SearchResponse(items=items)
         elif num_subsearch == 1:
             return subsearch_results[0]
         else:
@@ -100,39 +81,110 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         for future in futures:
             result = future.result()
-            if result.HasField("item"):
+            if result.item.metadata.id:
                 return result
 
         context.set_code(grpc.StatusCode.NOT_FOUND)
         context.set_details("ID not found in collection")
         return servicers_pb2.RetrieveResponse()
 
-    @unhandled_exception_rpc(collections_pb2.CollectionConfigurationResponse)
-    def CollectionConfiguration(self, request, context):
+    @unhandled_exception_rpc(collections_pb2.CollectionsAddResponse)
+    def CollectionsAdd(self, request, context):
         collections = request.collections
-        nodes = self.cluster_manager.get_live_nodes()
+        nodes = self.cluster_manager.list_nodes()
         balance(collections, nodes, greedy.solver)
+        success = True
 
         if not request.noop:
-            self.cluster_manager.register_collections(collections)
+            self.cluster_manager.add_collections(collections)
 
             futures = []
             for node in nodes:
                 stub = clients.get_searcher_stub(node.hostport)
                 subrequest = collections_pb2.CollectionsLoadRequest()
-                future = stub.CollectionLoad.future(subrequest)
+                future = stub.CollectionsLoad.future(subrequest)
                 futures.append((node.hostport, future))
 
             for hostport, future in futures:
                 try:
                     future.result()
                 except grpc.RpcError as e:
-                    logger.error(f"Searcher {hostport} failed to load collections: {e}")
+                    success = False
+                    logger.error(
+                        f"Searcher {hostport} failed CollectionsLoadRequest: {e}"
+                    )
 
-        return collections_pb2.CollectionConfigurationResponse(collections=collections)
+        return collections_pb2.CollectionsAddResponse(
+            collections=collections, success=success
+        )
 
-    @unhandled_exception_rpc(collections_pb2.CollectionsResponse)
-    def GetCollections(self, request, context):
+    @unhandled_exception_rpc(collections_pb2.CollectionsDeleteResponse)
+    def CollectionsDelete(self, request, context):
+        collection_names = request.names
+        success = True
+
+        if not request.noop:
+            self.cluster_manager.delete_collections(collection_names)
+            nodes = self.cluster_manager.list_nodes()
+
+            futures = []
+            for node in nodes:
+                stub = clients.get_searcher_stub(node.hostport)
+                subrequest = collections_pb2.CollectionsLoadRequest()
+                future = stub.CollectionsLoad.future(subrequest)
+                futures.append((node.hostport, future))
+
+            for hostport, future in futures:
+                try:
+                    future.result()
+                except grpc.RpcError as e:
+                    success = False
+                    logger.error(
+                        f"Searcher {hostport} failed CollectionsLoadRequest: {e}"
+                    )
+
+        return collections_pb2.CollectionsDeleteResponse(
+            names=collection_names, success=success
+        )
+
+    @unhandled_exception_rpc(collections_pb2.CollectionsLoadResponse)
+    def CollectionsLoad(self, request, context):
+        futures = []
+        nodes = self.cluster_manager.list_nodes()
+        for node in nodes:
+            stub = clients.get_searcher_stub(node.hostport)
+            subrequest = collections_pb2.CollectionsLoadRequest()
+            future = stub.CollectionsLoad.future(subrequest)
+            futures.append((node.hostport, future))
+
+        for hostport, future in futures:
+            try:
+                future.result()
+            except grpc.RpcError as e:
+                logger.error(f"Searcher {hostport} failed CollectionsLoadRequest: {e}")
+
+        return collections_pb2.CollectionsLoadResponse()
+
+    @unhandled_exception_rpc(collections_pb2.CollectionsListResponse)
+    def CollectionsList(self, request, context):
         collection_names = list(request.names)
-        collections = self.cluster_manager.get_collections(collection_names)
-        return collections_pb2.CollectionsResponse(collections=collections)
+        collections = self.cluster_manager.list_collections(collection_names)
+        return collections_pb2.CollectionsListResponse(collections=collections)
+
+    def get_searcher_hostports(
+        self, collection_name: str, shard_names: List[str] = None
+    ) -> List[Tuple[str, List[str]]]:
+        shard_hostports = self.cluster_manager.get_searchers(
+            collection_name, shard_names
+        )
+
+        shard_to_host = {}
+        for shard_name, hostports in shard_hostports:
+            shard_to_host[shard_name] = random.choice(hostports)
+
+        host_to_shards: Dict[str, List] = {}
+        for shard_name, hostport in shard_to_host.items():
+            host_to_shards[hostport] = host_to_shards.get(hostport, [])
+            host_to_shards[hostport].append(shard_name)
+
+        return list(host_to_shards.items())

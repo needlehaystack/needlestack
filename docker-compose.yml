@@ -7,6 +7,11 @@ version: '3.4'
 #
 #######################
 
+x-environment: &environment
+  environment:
+    PYTHONPATH: '/app'
+    LANG: 'en_US.UTF-8'
+
 x-servicer-build: &servicer-build
   build:
     dockerfile: ./docker/needlestack.dockerfile
@@ -21,12 +26,8 @@ x-test-build: &test-build
     context: .
     args:
       - BASE_IMAGE=3.7.4-slim-stretch
+  <<: *environment
   image: "needlestack-test"
-
-x-environment: &environment
-  environment:
-    PYTHONPATH: '/app'
-    LANG: 'en_US.UTF-8'
 
 x-searcher-grpc-template: &searcher-grpc-template
   <<: *servicer-build

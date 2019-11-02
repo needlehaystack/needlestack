@@ -51,7 +51,8 @@ class FaissIndex(BaseIndex):
             index_binary=index_binary, metadatas=self.metadatas
         )
 
-    def load(self):
+    def _load(self):
+        modified_time = self.data_source.last_modified
         with self.data_source.get_content() as content:
             proto = indices_pb2.FaissIndex.FromString(content.read())
 
@@ -61,8 +62,17 @@ class FaissIndex(BaseIndex):
             proto.ClearField("index_binary")
             self.index = faiss.read_index(f.name)
         self.metadatas = proto.metadatas
+        self.modified_time = modified_time
 
         self.id_to_vector(self.enable_id_to_vector)
+
+    def update_available(self):
+        if self.modified_time is None:
+            return True
+        elif self.modified_time < self.data_source.last_modified:
+            return True
+        else:
+            return False
 
     def id_to_vector(self, enable: bool):
         if enable:

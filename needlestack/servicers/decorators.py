@@ -7,7 +7,7 @@ from grpc._channel import _Rendezvous
 logger = logging.getLogger("needlestack")
 
 
-def unhandled_exception_rpc(reponse_type: type):
+def unhandled_exception_rpc(response_type: type):
     def wrapper(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapped(self, request, context):
@@ -17,7 +17,7 @@ def unhandled_exception_rpc(reponse_type: type):
                 logger.error(e)
                 context.set_code(e.code())
                 context.set_details(e.details())
-                return reponse_type()
+                return response_type()
             except Exception as e:
                 logger.error(e)
                 raise e

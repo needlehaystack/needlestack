@@ -5,19 +5,15 @@ import "needlestack/apis/indices.proto";
 import "needlestack/apis/tensors.proto";
 
 
-/********************
- *
- * Servicers
- * 
- ********************/
-
 /* Main entrypoint for external clients to run distributed kNN searches */
 service Merger {
     rpc Search (SearchRequest) returns (SearchResponse);
     rpc SearchStream (SearchRequest) returns (stream SearchResultItem);
     rpc Retrieve (RetrieveRequest) returns (RetrieveResponse);
-    rpc CollectionConfiguration (CollectionConfigurationRequest) returns (CollectionConfigurationResponse);
-    rpc GetCollections(CollectionsRequest) returns (CollectionsResponse);
+    rpc CollectionsAdd (CollectionsAddRequest) returns (CollectionsAddResponse);
+    rpc CollectionsDelete (CollectionsDeleteRequest) returns (CollectionsDeleteRequest);
+    rpc CollectionsList (CollectionsListRequest) returns (CollectionsListResponse);
+    rpc CollectionsLoad (CollectionsLoadRequest) returns (CollectionsLoadResponse);
 };
 
 /* Worker used by `Merger` to perform single-node kNN search */
@@ -25,7 +21,7 @@ service Searcher {
     rpc Search (SearchRequest) returns (SearchResponse);
     rpc SearchStream (SearchRequest) returns (stream SearchResultItem);
     rpc Retrieve (RetrieveRequest) returns (RetrieveResponse);
-    rpc CollectionLoad (CollectionsLoadRequest) returns (CollectionsLoadResponse);
+    rpc CollectionsLoad (CollectionsLoadRequest) returns (CollectionsLoadResponse);
 };
 
 /********************

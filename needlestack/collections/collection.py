@@ -1,5 +1,5 @@
 import heapq
-from typing import List, Dict, Iterable
+from typing import List, Dict, Iterable, Optional
 
 import numpy as np
 
@@ -36,14 +36,16 @@ class Collection(object):
         self.name = proto.name
         self.replication_factor = proto.replication_factor
         self.enable_id_to_vector = proto.enable_id_to_vector
+        self.shards = {}
 
         shards = [Shard.from_proto(shard_proto) for shard_proto in proto.shards]
-        self.shards = {shard.name: shard for shard in shards}
-        for shard in self.shards.values():
+        for shard in shards:
             shard.enable_id_to_vector = self.enable_id_to_vector
+            self.add_shard(shard)
 
     def load(self):
         for shard in self.shards.values():
+            shard.enable_id_to_vector = self.enable_id_to_vector
             shard.load()
         self.validate()
 
@@ -54,6 +56,16 @@ class Collection(object):
                 f"All shards in {self.name} Collection do not match dimensions"
             )
         self.dimension = shard_dimensions.pop()
+
+    def add_shard(self, shard: Shard):
+        self.shards[shard.name] = shard
+
+    def drop_shard(self, name: str):
+        del self.shards[name]
+
+    def merge_proto(self, proto):
+        self.replication_factor = proto.replication_factor
+        self.enable_id_to_vector = proto.enable_id_to_vector
 
     def query(
         self, X: np.ndarray, k: int, shard_names: List[str]
@@ -67,9 +79,9 @@ class Collection(object):
 
     def retrieve(
         self, id: str, shard_names: List[str]
-    ) -> indices_pb2.RetrievalResultItem:
+    ) -> Optional[indices_pb2.RetrievalResultItem]:
         for shard_name in shard_names:
             retrieval_item = self.shards[shard_name].retrieve(id)
             if retrieval_item is not None:
                 return retrieval_item
-        return indices_pb2.RetrievalResultItem()
+        return None

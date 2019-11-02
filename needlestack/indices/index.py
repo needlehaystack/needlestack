@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 
 import numpy as np
 
@@ -9,6 +9,8 @@ from needlestack.apis import serializers
 class BaseIndex(object):
     """Base class for index implementations. Defines interfaces
     for populating data and performing kNN queries."""
+
+    modified_time: Union[float, None] = None
 
     @staticmethod
     def from_proto(proto: indices_pb2.BaseIndex) -> "BaseIndex":
@@ -63,6 +65,23 @@ class BaseIndex(object):
 
     def load(self):
         """Load data into memory"""
+        if self.update_available():
+            self._load()
+
+    def _load(self):
+        """Load data into memory"""
+        raise NotImplementedError()
+
+    def update_available(self):
+        """Data source has an update available"""
+        raise NotImplementedError()
+
+    def set_vectors(self, X: np.ndarray, metadatas: List[indices_pb2.Metadata]):
+        """Set the vectors for this index"""
+        raise NotImplementedError()
+
+    def add_vectors(self, X: np.ndarray, metadatas: List[indices_pb2.Metadata]):
+        """Add the vectors to existing index"""
         raise NotImplementedError()
 
     def _get_metadata_by_index(self, i: int) -> indices_pb2.Metadata:

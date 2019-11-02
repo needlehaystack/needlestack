@@ -38,6 +38,12 @@ class Shard(object):
         self.index.enable_id_to_vector = self.enable_id_to_vector
         self.index.load()
 
+    def set_vectors(self, X: np.ndarray, metadatas: List[indices_pb2.Metadata]):
+        return self.index.set_vectors(X, metadatas)
+
+    def add_vectors(self, X: np.ndarray, metadatas: List[indices_pb2.Metadata]):
+        return self.index.add_vectors(X, metadatas)
+
     def query(self, X: np.ndarray, k: int) -> List[indices_pb2.SearchResultItem]:
         return self.index.query(X, k)[0]
 
