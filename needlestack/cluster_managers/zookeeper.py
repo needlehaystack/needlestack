@@ -1,12 +1,12 @@
 import logging
 import signal
-import time
 from copy import deepcopy
 from typing import List, Optional
 
-from kazoo.exceptions import NodeExistsError
+import kazoo
 from kazoo.client import KazooClient, KazooState
 from kazoo.recipe.cache import TreeCache
+from kazoo.retry import KazooRetry
 
 from needlestack.apis import collections_pb2
 from needlestack.cluster_managers import ClusterManager
@@ -119,20 +119,24 @@ class ZookeeperClusterManager(ClusterManager):
                     )
                     transaction.delete(znode)
 
-        results = transaction.commit()
+        transaction.commit()
 
-    def connect_searcher(self):
-        for i in range(5):
-            try:
-                self.zk.create(self.this_node_znode, ephemeral=True, makepath=True)
-                logger.info(f"Created ephemeral ZNode {self.this_node_znode}")
-                return
-            except NodeExistsError:
-                logger.warn(
-                    f"Ephemeral ZNode {self.this_node_znode} already exists, waiting 5 seconds."
-                )
-                time.sleep(5)
-        logger.error(f"Could not created ephemeral ZNode {self.this_node_znode}")
+    def register_merger(self):
+        pass
+
+    def register_searcher(self):
+        try:
+            retrier = KazooRetry(max_tries=5, delay=1, backoff=2, max_delay=20)
+            retrier(self.zk.create, self.this_node_znode, ephemeral=True, makepath=True)
+            logger.info(f"Created ephemeral ZNode {self.this_node_znode}")
+        except kazoo.retry.RetryFailedError:
+            logger.error(
+                f"Max retries reached for creating ephemeral ZNode {self.this_node_znode}"
+            )
+        except kazoo.retry.InterruptedError:
+            logger.error(
+                f"Retries interrupted for creating ephemeral ZNode {self.this_node_znode}"
+            )
 
     def set_state(self, state, collection_name=None, shard_name=None, hostport=None):
         transaction = self.zk.transaction()
@@ -149,7 +153,7 @@ class ZookeeperClusterManager(ClusterManager):
                     )
                     transaction.set_data(znode, state)
 
-        results = transaction.commit()
+        transaction.commit()
 
     def set_local_state(self, state, collection_name=None, shard_name=None):
         self.set_state(state, collection_name, shard_name, self.hostport)
@@ -183,18 +187,32 @@ class ZookeeperClusterManager(ClusterManager):
                 transaction.create(shard_znode, shard_copy.SerializeToString())
                 transaction.create(self.replica_znode(collection.name, shard.name))
                 for replica in shard.replicas:
+                    replica_copy = deepcopy(replica)
+                    replica_copy.state = collections_pb2.Node.BOOTING
                     replica_znode = self.replica_znode(
-                        collection.name, shard.name, replica.hostport
+                        collection.name, shard.name, replica.node.hostport
                     )
-                    transaction.create(replica_znode, self.BOOTING)
+                    transaction.create(replica_znode, replica_copy.SerializeToString())
 
-        results = transaction.commit()
+        transaction.commit()
         return collections
 
     def delete_collections(self, collection_names):
+        transaction = self.zk.transaction()
+
         for collection_name in collection_names:
             collection_znode = self.collection_znode(collection_name)
-            self.zk.delete(collection_znode, recursive=True)
+            for shard_name in self.zk.get_children(collection_znode):
+                shard_znode = self.shard_znode(collection_name, shard_name)
+                for replica_name in self.zk.get_children(shard_znode):
+                    replica_znode = self.replica_znode(
+                        collection_name, shard_name, replica_name
+                    )
+                    transaction.delete(replica_znode)
+                transaction.delete(shard_znode)
+            transaction.delete(collection_znode)
+
+        transaction.commit()
         return collection_names
 
     def list_nodes(self):
@@ -227,17 +245,16 @@ class ZookeeperClusterManager(ClusterManager):
 
                 replicas = []
                 replicas_znode = self.replica_znode(collection_name, shard_name)
-                for replica in self.zk.get_children(replicas_znode):
-                    if hostport == replica or hostport is None:
+                for replica_hostport in self.zk.get_children(replicas_znode):
+                    if hostport == replica_hostport or hostport is None:
                         replica_znode = self.replica_znode(
-                            collection_name, shard_name, replica
+                            collection_name, shard_name, replica_hostport
                         )
-                        state, _ = (
+                        replica_data, _ = (
                             self.zk.get(replica_znode) if load_replica else (None, None)
                         )
-                        state = ZookeeperClusterManager.state_to_enum(state)
-                        node_proto = collections_pb2.Node(hostport=replica, state=state)
-                        replicas.append(node_proto)
+                        replica_proto = collections_pb2.Replica.FromString(replica_data)
+                        replicas.append(replica_proto)
 
                 if replicas:
                     shard_znode = self.shard_znode(collection_name, shard_name)
@@ -288,9 +305,12 @@ class ZookeeperClusterManager(ClusterManager):
                 replica_znode = self.replica_znode(
                     collection_name, shard_name, hostport
                 )
-                node = self.cache.get_data(replica_znode)
-                if node and node.data == self.ACTIVE:
-                    active_hostports.append(hostport)
+                node = self.cache.get_data(self.this_node_znode)
+                if node:
+                    replica = self.cache.get_data(replica_znode)
+                    replica = collections_pb2.Replica.FromString(replica.data)
+                    if replica.state == collections_pb2.Replica.ACTIVE:
+                        active_hostports.append(hostport)
             hostports = active_hostports
 
         return hostports

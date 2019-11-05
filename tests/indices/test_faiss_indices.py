@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from needlestack.apis import indices_pb2
+from needlestack.exceptions import UnsupportedIndexOperationException
 
 
 def test_load(faiss_index_4d):
@@ -96,6 +97,6 @@ def test_get_metadata_by_index(faiss_index_4d, index):
 def test_get_index_by_id_not_enabled(faiss_index_4d):
     faiss_index_4d.load()
 
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(UnsupportedIndexOperationException) as excinfo:
         faiss_index_4d._get_index_by_id(99999999)
         assert "Index does not have enable_id_to_vector" == str(excinfo.value)

@@ -6,6 +6,7 @@ import numpy as np
 from needlestack.apis import indices_pb2
 from needlestack.apis import collections_pb2
 from needlestack.collections.shard import Shard
+from needlestack.exceptions import DimensionMismatchException
 
 
 class Collection(object):
@@ -43,6 +44,10 @@ class Collection(object):
             shard.enable_id_to_vector = self.enable_id_to_vector
             self.add_shard(shard)
 
+    def merge_proto(self, proto):
+        self.replication_factor = proto.replication_factor
+        self.enable_id_to_vector = proto.enable_id_to_vector
+
     def load(self):
         for shard in self.shards.values():
             shard.enable_id_to_vector = self.enable_id_to_vector
@@ -52,7 +57,7 @@ class Collection(object):
     def validate(self):
         shard_dimensions = {shard.index.dimension for shard in self.shards.values()}
         if len(shard_dimensions) > 1:
-            raise Exception(
+            raise DimensionMismatchException(
                 f"All shards in {self.name} Collection do not match dimensions"
             )
         self.dimension = shard_dimensions.pop()
@@ -62,10 +67,6 @@ class Collection(object):
 
     def drop_shard(self, name: str):
         del self.shards[name]
-
-    def merge_proto(self, proto):
-        self.replication_factor = proto.replication_factor
-        self.enable_id_to_vector = proto.enable_id_to_vector
 
     def query(
         self, X: np.ndarray, k: int, shard_names: List[str]

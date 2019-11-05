@@ -1,38 +1,54 @@
-from needlestack.balancers import Item, Knapsack
-from needlestack.balancers import greedy
+from needlestack.balancers import Item, Knapsack, KnapsackState
+from needlestack.balancers.greedy import GreedyAlgorithm
 
 
-def test_greedy_solver_one_knapsack():
+def test_greedy_add_one_knapsack():
     item = Item("id", "value")
     knapsack = Knapsack("id", "value")
-    greedy.solver([item], [knapsack])
+    state = KnapsackState()
+    state.add_item(item)
+    state.add_knapsack(knapsack)
+    algo = GreedyAlgorithm()
+    algo.add([item], state)
     assert item in knapsack.items
 
 
-def test_greedy_solver_two_knapsack():
-    items = [Item("id", "value"), Item("id", "value")]
-    knapsacks = [Knapsack("id", "value"), Knapsack("id", "value")]
-    greedy.solver(items, knapsacks)
+def test_greedy_add_two_knapsack():
+    items = [Item("id1", "value"), Item("id2", "value")]
+    knapsacks = [Knapsack("id1", "value"), Knapsack("id2", "value")]
+    state = KnapsackState()
+    state.add_items(items)
+    state.add_knapsacks(knapsacks)
+    algo = GreedyAlgorithm()
+    algo.add(items, state)
     for knapsack in knapsacks:
         assert len(knapsack.items) == 1
 
 
-def test_greedy_solver_item_quantity_to_much():
+def test_greedy_add_item_quantity_to_much():
     item_2x = Item("id", "value", quantity=2)
     knapsack = Knapsack("id", "value")
-    greedy.solver([item_2x], [knapsack])
+    state = KnapsackState()
+    state.add_item(item_2x)
+    state.add_knapsack(knapsack)
+    algo = GreedyAlgorithm()
+    algo.add([item_2x], state)
     assert len(knapsack.items) == 1
 
 
-def test_greedy_solver_item_quantity():
-    item_2x = Item("id", "value", quantity=2)
-    item_3x = Item("id", "value", quantity=3)
+def test_greedy_add_item_quantity():
+    item_2x = Item("id1", "value", quantity=2)
+    item_3x = Item("id2", "value", quantity=3)
     items = [item_2x, item_3x]
     knapsacks = [
-        Knapsack("id", "value"),
-        Knapsack("id", "value"),
-        Knapsack("id", "value"),
+        Knapsack("id1", "value"),
+        Knapsack("id2", "value"),
+        Knapsack("id3", "value"),
     ]
-    greedy.solver(items, knapsacks)
+    state = KnapsackState()
+    state.add_items(items)
+    state.add_knapsacks(knapsacks)
+    algo = GreedyAlgorithm()
+    algo.add(items, state)
     for knapsack in knapsacks:
         assert item_3x in knapsack.items

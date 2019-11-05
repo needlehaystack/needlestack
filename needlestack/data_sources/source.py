@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 
 from needlestack.apis import data_sources_pb2
+from needlestack.exceptions import DeserializationError
 
 
 class DataSource(object):
@@ -22,7 +23,7 @@ class DataSource(object):
             data_source = LocalDataSource()
             data_source.populate_from_proto(proto.local_data_source)
         else:
-            raise ValueError("No valid data source found from protobuf")
+            raise DeserializationError("No valid data source found from protobuf")
 
         return data_source
 

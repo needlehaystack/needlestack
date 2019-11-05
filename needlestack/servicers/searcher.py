@@ -26,7 +26,7 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
         self.cluster_manager = cluster_manager
         self.collections = {}
         self.collections_proto = {}
-        self.cluster_manager.connect_searcher()
+        self.cluster_manager.register_searcher()
         self.load_collections()
 
     @unhandled_exception_rpc(servicers_pb2.SearchResponse)
@@ -90,10 +90,14 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
 
     def _add_collection(self, proto: collections_pb2.Collection):
         collection = Collection.from_proto(proto)
-        self.cluster_manager.set_local_state(ClusterManager.BOOTING, collection.name)
+        self.cluster_manager.set_local_state(
+            collections_pb2.Replica.BOOTING, collection.name
+        )
         self.collections[collection.name] = collection
         collection.load()
-        self.cluster_manager.set_local_state(ClusterManager.ACTIVE, collection.name)
+        self.cluster_manager.set_local_state(
+            collections_pb2.Replica.ACTIVE, collection.name
+        )
 
     def _drop_collection(self, name: str):
         del self.collections[name]
@@ -110,7 +114,7 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
             for name, new_shard in new_shards.items():
                 if name not in old_shards:
                     self.cluster_manager.set_local_state(
-                        ClusterManager.BOOTING, collection.name, name
+                        collections_pb2.Replica.BOOTING, collection.name, name
                     )
                     collection.add_shard(Shard.from_proto(new_shard))
                 elif (
@@ -118,7 +122,7 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
                     != old_shards[name].SerializeToString()
                 ):
                     self.cluster_manager.set_local_state(
-                        ClusterManager.BOOTING, collection.name, name
+                        collections_pb2.Replica.BOOTING, collection.name, name
                     )
                     collection.drop_shard(name)
                     collection.add_shard(Shard.from_proto(new_shard))
@@ -129,5 +133,5 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
 
             collection.load()
             self.cluster_manager.set_local_state(
-                ClusterManager.ACTIVE, collection.name, name
+                collections_pb2.Replica.ACTIVE, collection.name, name
             )

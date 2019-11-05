@@ -7,6 +7,7 @@ import numpy as np
 from needlestack.apis import indices_pb2
 from needlestack.data_sources import DataSource
 from needlestack.indices import BaseIndex
+from needlestack.exceptions import UnsupportedIndexOperationException
 
 
 class FaissIndex(BaseIndex):
@@ -64,7 +65,7 @@ class FaissIndex(BaseIndex):
         self.metadatas = proto.metadatas
         self.modified_time = modified_time
 
-        self.id_to_vector(self.enable_id_to_vector)
+        self._set_id_to_vector(self.enable_id_to_vector)
 
     def update_available(self):
         if self.modified_time is None:
@@ -74,7 +75,7 @@ class FaissIndex(BaseIndex):
         else:
             return False
 
-    def id_to_vector(self, enable: bool):
+    def _set_id_to_vector(self, enable: bool):
         if enable:
             self.id2index = {
                 metadata.id: i for i, metadata in enumerate(self.metadatas)
@@ -97,7 +98,9 @@ class FaissIndex(BaseIndex):
         if self.enable_id_to_vector:
             return self.id2index.get(id)
         else:
-            raise ValueError("Index does not have enable_id_to_vector")
+            raise UnsupportedIndexOperationException(
+                "Index does not have enable_id_to_vector"
+            )
 
     def knn_search(self, X, k):
         """Faiss only supports float32 at version 1.5.0"""

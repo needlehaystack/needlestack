@@ -28,6 +28,7 @@ message CollectionsListResponse {
 message CollectionsAddRequest {
     repeated Collection collections = 1;
     bool noop = 2;
+    string balance_algorithm = 3;
 };
 
 message CollectionsAddResponse {
@@ -57,6 +58,7 @@ message CollectionsLoadRequest {
 };
 
 message CollectionsLoadResponse {
+    bool success = 1;
 };
 
 /********************
@@ -75,21 +77,22 @@ message Collection {
 
 /* A shard from a collection */
 message Shard {
-    // Name used to identify shard
-    string name = 1;
+
+    string collection_name = 1;
+    string name = 2;
 
     // Optional shard weight used to help distribute shards evenly among searcher
-    float weight = 2;
+    float weight = 3;
 
     // Optional list of nodes the shard exists on
-    repeated Node replicas = 3;
+    repeated Replica replicas = 4;
 
     // A source of the type of index to load
-    BaseIndex index = 4;
+    BaseIndex index = 5;
 };
 
 /* A Searcher node that host shard replicas */
-message Node {
+message Replica {
 
     enum State {
         UNKNOWN = 0;
@@ -99,9 +102,16 @@ message Node {
         RECOVERING = 4;
     };
 
+    string collection_name = 1;
+    string shard_name = 2;
+    Node node = 3;
+    State state = 4;
+    bool leader = 5;
+};
+
+message Node {
     string hostport = 1;
-    State state = 2;
-    string ip_address = 3;
-    string hostname = 4;
-    int32 port = 5;
-}
+    string ip_address = 2;
+    string hostname = 3;
+    int32 port = 4;
+};

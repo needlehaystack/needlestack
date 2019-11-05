@@ -6,20 +6,6 @@ from needlestack.apis import collections_pb2
 class ClusterManager(object):
     """Maintains connection to cluster manager to keep track of other nodes"""
 
-    ACTIVE = b"ACTIVE"
-    DOWN = b"DOWN"
-    BOOTING = b"BOOTING"
-    RECOVERING = b"RECOVERING"
-
-    @classmethod
-    def state_to_enum(cls, state):
-        return {
-            cls.ACTIVE: collections_pb2.Node.ACTIVE,
-            cls.DOWN: collections_pb2.Node.DOWN,
-            cls.BOOTING: collections_pb2.Node.BOOTING,
-            cls.RECOVERING: collections_pb2.Node.RECOVERING,
-        }.get(state)
-
     def startup(self):
         raise NotImplementedError()
 
@@ -29,12 +15,15 @@ class ClusterManager(object):
     def cleanup(self):
         raise NotImplementedError()
 
-    def connect_searcher(self):
+    def register_merger(self):
+        raise NotImplementedError()
+
+    def register_searcher(self):
         raise NotImplementedError()
 
     def set_state(
         self,
-        state: collections_pb2.Node.State,
+        state: collections_pb2.Replica.State,
         collection_name: Optional[str] = None,
         shard_name: Optional[str] = None,
         hostport: Optional[str] = None,
@@ -44,7 +33,7 @@ class ClusterManager(object):
 
     def set_local_state(
         self,
-        state: collections_pb2.Node.State,
+        state: collections_pb2.Replica.State,
         collection_name: Optional[str] = None,
         shard_name: Optional[str] = None,
     ):

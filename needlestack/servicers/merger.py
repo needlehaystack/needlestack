@@ -9,8 +9,8 @@ from needlestack.apis import clients
 from needlestack.apis import collections_pb2
 from needlestack.apis import servicers_pb2
 from needlestack.apis import servicers_pb2_grpc
-from needlestack.balancers import balance
-from needlestack.balancers import greedy
+from needlestack import balancers
+from needlestack.balancers.greedy import GreedyAlgorithm
 from needlestack.cluster_managers import ClusterManager
 from needlestack.servicers.decorators import unhandled_exception_rpc
 
@@ -23,6 +23,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
     def __init__(self, cluster_manager: ClusterManager):
         self.cluster_manager = cluster_manager
+        self.cluster_manager.register_merger()
 
     @unhandled_exception_rpc(servicers_pb2.SearchResponse)
     def Search(self, request, context):
@@ -90,32 +91,21 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
     @unhandled_exception_rpc(collections_pb2.CollectionsAddResponse)
     def CollectionsAdd(self, request, context):
-        collections = request.collections
+        new_collections = request.collections
+        current_collections = self.cluster_manager.list_collections()
         nodes = self.cluster_manager.list_nodes()
-        balance(collections, nodes, greedy.solver)
+        algorithm = GreedyAlgorithm()
+        collections_to_add = balancers.add(
+            current_collections, new_collections, nodes, algorithm
+        )
         success = True
 
         if not request.noop:
-            self.cluster_manager.add_collections(collections)
-
-            futures = []
-            for node in nodes:
-                stub = clients.get_searcher_stub(node.hostport)
-                subrequest = collections_pb2.CollectionsLoadRequest()
-                future = stub.CollectionsLoad.future(subrequest)
-                futures.append((node.hostport, future))
-
-            for hostport, future in futures:
-                try:
-                    future.result()
-                except grpc.RpcError as e:
-                    success = False
-                    logger.error(
-                        f"Searcher {hostport} failed CollectionsLoadRequest: {e}"
-                    )
+            self.cluster_manager.add_collections(collections_to_add)
+            success = self.collections_load()
 
         return collections_pb2.CollectionsAddResponse(
-            collections=collections, success=success
+            collections=collections_to_add, success=success
         )
 
     @unhandled_exception_rpc(collections_pb2.CollectionsDeleteResponse)
@@ -125,23 +115,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         if not request.noop:
             self.cluster_manager.delete_collections(collection_names)
-            nodes = self.cluster_manager.list_nodes()
-
-            futures = []
-            for node in nodes:
-                stub = clients.get_searcher_stub(node.hostport)
-                subrequest = collections_pb2.CollectionsLoadRequest()
-                future = stub.CollectionsLoad.future(subrequest)
-                futures.append((node.hostport, future))
-
-            for hostport, future in futures:
-                try:
-                    future.result()
-                except grpc.RpcError as e:
-                    success = False
-                    logger.error(
-                        f"Searcher {hostport} failed CollectionsLoadRequest: {e}"
-                    )
+            success = self.collections_load()
 
         return collections_pb2.CollectionsDeleteResponse(
             names=collection_names, success=success
@@ -149,6 +123,17 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
     @unhandled_exception_rpc(collections_pb2.CollectionsLoadResponse)
     def CollectionsLoad(self, request, context):
+        success = self.collections_load()
+        return collections_pb2.CollectionsLoadResponse(success=success)
+
+    @unhandled_exception_rpc(collections_pb2.CollectionsListResponse)
+    def CollectionsList(self, request, context):
+        collection_names = list(request.names)
+        collections = self.cluster_manager.list_collections(collection_names)
+        return collections_pb2.CollectionsListResponse(collections=collections)
+
+    def collections_load(self) -> bool:
+        success = True
         futures = []
         nodes = self.cluster_manager.list_nodes()
         for node in nodes:
@@ -159,17 +144,13 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         for hostport, future in futures:
             try:
-                future.result()
+                result = future.result()
+                success = success and result.success
             except grpc.RpcError as e:
+                success = False
                 logger.error(f"Searcher {hostport} failed CollectionsLoadRequest: {e}")
 
-        return collections_pb2.CollectionsLoadResponse()
-
-    @unhandled_exception_rpc(collections_pb2.CollectionsListResponse)
-    def CollectionsList(self, request, context):
-        collection_names = list(request.names)
-        collections = self.cluster_manager.list_collections(collection_names)
-        return collections_pb2.CollectionsListResponse(collections=collections)
+        return success
 
     def get_searcher_hostports(
         self, collection_name: str, shard_names: List[str] = None

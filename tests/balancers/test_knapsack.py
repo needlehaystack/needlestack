@@ -1,6 +1,7 @@
 import pytest
 
 from needlestack.balancers.knapsack import Item, Knapsack
+from needlestack.exceptions import KnapsackItemException
 
 
 def test_knapsack_add_item():
@@ -15,6 +16,6 @@ def test_knapsack_add_duplicate_item():
     item = Item("id", "value", weight=1.2)
     knapsack = Knapsack("id", "value")
     knapsack.add_item(item)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(KnapsackItemException) as excinfo:
         knapsack.add_item(item)
         assert "Item already exists in this knapsack" == str(excinfo.value)

@@ -4,6 +4,7 @@ import numpy as np
 
 from needlestack.apis import indices_pb2
 from needlestack.apis import serializers
+from needlestack.exceptions import DeserializationError
 
 
 class BaseIndex(object):
@@ -28,7 +29,7 @@ class BaseIndex(object):
             index = FaissIndex()
             index.populate_from_proto(proto.faiss_index)
         else:
-            raise ValueError("No valid index found from protobuf")
+            raise DeserializationError("No valid index found from protobuf")
 
         return index
 
@@ -72,7 +73,7 @@ class BaseIndex(object):
         """Load data into memory"""
         raise NotImplementedError()
 
-    def update_available(self):
+    def _update_available(self):
         """Data source has an update available"""
         raise NotImplementedError()
 
