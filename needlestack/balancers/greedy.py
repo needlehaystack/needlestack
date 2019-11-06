@@ -2,17 +2,16 @@ from needlestack.balancers import Algorithm
 
 
 class GreedyAlgorithm(Algorithm):
-    def add(self, items, state):
-        """A greedy algorithm that places the largest items first.
-        From heaviest to lightest, each item is placed in the lightest
-        knapsack.
-        """
+    """Greedy algorithm that places the largest item in the lightest knapsack,
+    then repeat until all items are placed somewhere."""
+
+    def add(self, items, knapsacks):
         items = sorted(items, key=lambda x: x.weight, reverse=True)
-        num_knapsacks = len(state.knapsacks)
+        num_knapsacks = len(knapsacks)
 
         for item in items:
             knapsacks = sorted(
-                state.knapsacks, key=lambda x: (x.current_weight, len(x.items))
+                knapsacks, key=lambda x: (x.current_weight, len(x.items))
             )
 
             quantity = (
@@ -20,4 +19,4 @@ class GreedyAlgorithm(Algorithm):
             )
 
             for i in range(quantity):
-                state.add_item_to_knapsack(knapsacks[i], item)
+                knapsacks[i].add_item(item)

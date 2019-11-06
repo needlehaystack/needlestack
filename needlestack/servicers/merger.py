@@ -9,7 +9,7 @@ from needlestack.apis import clients
 from needlestack.apis import collections_pb2
 from needlestack.apis import servicers_pb2
 from needlestack.apis import servicers_pb2_grpc
-from needlestack import balancers
+from needlestack.balancers import add_collections
 from needlestack.balancers.greedy import GreedyAlgorithm
 from needlestack.cluster_managers import ClusterManager
 from needlestack.servicers.decorators import unhandled_exception_rpc
@@ -93,10 +93,20 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
     def CollectionsAdd(self, request, context):
         new_collections = request.collections
         current_collections = self.cluster_manager.list_collections()
+
+        new_names = {c.name for c in new_collections}
+        current_names = {c.name for c in current_collections}
+        if new_names & current_names:
+            context.set_code(grpc.StatusCode.ALREADY_EXISTS)
+            context.set_details(
+                f"Collections {new_names & current_names} already exists"
+            )
+            return collections_pb2.CollectionsAddResponse(success=False)
+
         nodes = self.cluster_manager.list_nodes()
         algorithm = GreedyAlgorithm()
-        collections_to_add = balancers.add(
-            current_collections, new_collections, nodes, algorithm
+        collections_to_add = add_collections(
+            nodes, current_collections, new_collections, algorithm
         )
         success = True
 

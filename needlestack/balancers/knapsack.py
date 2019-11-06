@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import List, Set, Any, Optional, Dict
+from typing import List, Set, Optional, Dict
 
 from needlestack.apis import collections_pb2
 from needlestack.exceptions import KnapsackCapacityException, KnapsackItemException
@@ -13,21 +13,32 @@ class Item(object):
 
     Attributes:
         id: ID for item
-        value: Value the item is representing
+        collection:
+        shard:
         quantity: How many of these item should exist
         weight: How much this item weighs
     """
 
-    id: str
-    value: Any
-    quantity: int
-    weight: float
+    collection: collections_pb2.Collection
+    shard: collections_pb2.Shard
 
-    def __init__(self, id, value, quantity: int = 1, weight: float = 0.0):
-        self.id = id
-        self.value = value
-        self.quantity = quantity
-        self.weight = weight
+    def __init__(
+        self, collection: collections_pb2.Collection, shard: collections_pb2.Shard
+    ):
+        self.collection = collection
+        self.shard = shard
+
+    @property
+    def id(self):
+        return f"{self.collection.name}:{self.shard.name}"
+
+    @property
+    def quantity(self):
+        return self.collection.replication_factor or 1
+
+    @property
+    def weight(self):
+        return self.shard.weight
 
 
 class Knapsack(object):
@@ -35,23 +46,26 @@ class Knapsack(object):
 
     Attributes:
         id: ID for knapsack
-        value: Value this knapsack is representing
+        node: Value this knapsack is representing
         items: Set of items in knapsack
         current_weight: Current weight in the knapsack
         capacity: Max weight for knapsack
     """
 
-    id: str
-    value: Any
+    node: collections_pb2.Node
     items: Set[Item]
     current_weight: float
     capacity: Optional[float] = None
 
-    def __init__(self, id, value):
-        self.id = id
-        self.value = value
+    def __init__(self, node, capacity: Optional[float] = None):
+        self.node = node
+        self.capacity = capacity
         self.items = set()
         self.current_weight = 0
+
+    @property
+    def id(self):
+        return self.node.hostport
 
     def add_item(self, item: Item):
         if self.capacity and (self.current_weight + item.weight) > self.capacity:
@@ -63,136 +77,91 @@ class Knapsack(object):
             self.current_weight += item.weight
 
 
-class KnapsackState(object):
-
-    """Maintains the state of a knapsack solution.
-
-    TODO: Refactor all of these to make more sense
-    """
-
-    knapsacks: List[Knapsack]
-    items: List[Item]
-    items_to_knapsacks: Dict[str, List[Knapsack]]
-
-    def __init__(self):
-        self.knapsacks = []
-        self.items = []
-        self.items_to_knapsacks = {}
-
-    def add_knapsack(self, knapsack: Knapsack):
-        self.knapsacks.append(knapsack)
-
-    def add_knapsacks(self, knapsacks: List[Knapsack]):
-        for knapsack in knapsacks:
-            self.add_knapsack(knapsack)
-
-    def add_item(self, item: Item):
-        self.items.append(item)
-        if item.id in self.items_to_knapsacks:
-            raise KnapsackItemException(
-                f"Item {item.id} already exist in KnapsackState"
-            )
-        else:
-            self.items_to_knapsacks[item.id] = []
-
-    def add_items(self, items: List[Item]):
-        for item in items:
-            self.add_item(item)
-
-    def add_item_to_knapsack(self, knapsack, item):
-        knapsack.add_item(item)
-        self.items_to_knapsacks[item.id].append(knapsack)
-
-
 class Algorithm(object):
-    def add(self, items: List[Item], state: KnapsackState):
+    def add(self, items: List[Item], knapsacks: List[Knapsack]):
         raise NotImplementedError()
 
-    def rebalance(self, state: KnapsackState):
+    def rebalance(self, knapsacks: List[Knapsack]):
         raise NotImplementedError()
 
 
-def add(
+def add_collections(
     nodes: List[collections_pb2.Node],
     current_collections: List[collections_pb2.Collection],
     add_collections: List[collections_pb2.Collection],
     algorithm: Algorithm,
 ) -> List[collections_pb2.Collection]:
-    state = _get_knapsack_state(nodes, current_collections)
+    current_collections = deepcopy(current_collections)
+    add_collections = deepcopy(add_collections)
 
-    add_items = []
-    for collection in deepcopy(add_collections):
+    current_knapsacks = _collections_to_knapsacks(nodes, current_collections)
+
+    new_items = []
+    for collection in add_collections:
         if collection.replication_factor > len(nodes):
             logger.warn(
                 f"{collection.name}.replication_factor is {collection.replication_factor}, but only {len(nodes)} nodes."
             )
         for shard in collection.shards:
-            item = Item(
-                f"{collection.name}:{shard.name}",
-                (collection, shard),
-                collection.replication_factor,
-                shard.weight or 1.0,
-            )
-            add_items.append(item)
-            state.add_item(item)
+            item = Item(collection, shard)
+            new_items.append(item)
 
-    algorithm.add(add_items, state)
+    algorithm.add(new_items, current_knapsacks)
 
-    collections = _extract_collection_proto(state)
+    collections = _knapsacks_to_collections(current_knapsacks)
     add_set = {collection.name for collection in add_collections}
 
     return [collection for collection in collections if collection.name in add_set]
 
 
-def rebalance(
+def rebalance_collections(
     nodes: List[collections_pb2.Node],
     current_collections: List[collections_pb2.Collection],
     algorithm: Algorithm,
 ) -> List[collections_pb2.Collection]:
-    state = _get_knapsack_state(nodes, current_collections)
-    algorithm.rebalance(state)
-    return _extract_collection_proto(state)
+    current_knapsacks = _collections_to_knapsacks(nodes, current_collections)
+    algorithm.rebalance(current_knapsacks)
+    return _knapsacks_to_collections(current_knapsacks)
 
 
-def _get_knapsack_state(
+def _collections_to_knapsacks(
     nodes: List[collections_pb2.Node], collections: List[collections_pb2.Collection]
-) -> KnapsackState:
-    state = KnapsackState()
+) -> List[Knapsack]:
+    knapsacks_map = {node.hostport: Knapsack(node) for node in nodes}
 
-    for node in deepcopy(nodes):
-        knapsack = Knapsack(node.hostport, node)
-        state.add_knapsack(knapsack)
-
-    knapsacks_map = {knapsack.id: knapsack for knapsack in state.knapsacks}
-
-    for collection in deepcopy(collections):
+    for collection in collections:
         for shard in collection.shards:
-            item = Item(
-                f"{collection.name}:{shard.name}",
-                (collection, shard),
-                collection.replication_factor,
-                shard.weight or 1.0,
-            )
-            state.add_item(item)
+            item = Item(collection, shard)
             for replica in shard.replicas:
                 knapsack = knapsacks_map[replica.node.hostport]
-                state.add_item_to_knapsack(knapsack, item)
-            shard.ClearField("replicas")
-        collection.ClearField("shards")
+                knapsack.add_item(item)
 
-    return state
+    return list(knapsacks_map.values())
 
 
-def _extract_collection_proto(state: KnapsackState) -> List[collections_pb2.Collection]:
-    items_map = {item.id: item for item in state.items}
+def _knapsacks_to_collections(
+    knapsacks: List[Knapsack]
+) -> List[collections_pb2.Collection]:
+    items_map = {}
+    items_to_knapsacks: Dict[str, List[Knapsack]] = {}
+    for knapsack in knapsacks:
+        for item in knapsack.items:
+            items_map[item.id] = item
+            items_to_knapsacks[item.id] = items_to_knapsacks.get(item.id, [])
+            items_to_knapsacks[item.id].append(knapsack)
 
-    for item_id, knapsacks in state.items_to_knapsacks.items():
+    collections_map = {}
+    for item in items_map.values():
+        item.shard.ClearField("replicas")
+        item.collection.ClearField("shards")
+        collections_map[item.collection.name] = item.collection
+
+    for item_id, knapsacks in items_to_knapsacks.items():
         item = items_map[item_id]
-        collection, shard = item.value
         replicas = [
-            collections_pb2.Replica(node=knapsack.value) for knapsack in knapsacks
+            collections_pb2.Replica(node=knapsack.node) for knapsack in knapsacks
         ]
-        shard.replicas.extend(replicas)
-        collection.shards.extend([shard])
+        item.shard.replicas.extend(replicas)
+        item.collection.shards.extend([item.shard])
 
-    return [item.value[0] for item in state.items]
+    return list(collections_map.values())

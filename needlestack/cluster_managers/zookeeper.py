@@ -119,7 +119,7 @@ class ZookeeperClusterManager(ClusterManager):
                     )
                     transaction.delete(znode)
 
-        transaction.commit()
+        self.commit_and_log(transaction)
 
     def register_merger(self):
         pass
@@ -143,17 +143,18 @@ class ZookeeperClusterManager(ClusterManager):
 
         collections = [collection_name] if collection_name else None
         for collection in self._list_collections(
-            collections, hostport=hostport, load_replica=False
+            collections, hostport=hostport, load_replica=True
         ):
             logger.info(f"Set states for {collection.name} shard ZNodes")
             for shard in collection.shards:
                 for replica in shard.replicas:
                     znode = self.replica_znode(
-                        collection.name, shard.name, replica.hostport
+                        collection.name, shard.name, replica.node.hostport
                     )
-                    transaction.set_data(znode, state)
+                    replica.state = state
+                    transaction.set_data(znode, replica.SerializeToString())
 
-        transaction.commit()
+        self.commit_and_log(transaction)
 
     def set_local_state(self, state, collection_name=None, shard_name=None):
         self.set_state(state, collection_name, shard_name, self.hostport)
@@ -188,31 +189,33 @@ class ZookeeperClusterManager(ClusterManager):
                 transaction.create(self.replica_znode(collection.name, shard.name))
                 for replica in shard.replicas:
                     replica_copy = deepcopy(replica)
-                    replica_copy.state = collections_pb2.Node.BOOTING
+                    replica_copy.state = collections_pb2.Replica.BOOTING
                     replica_znode = self.replica_znode(
                         collection.name, shard.name, replica.node.hostport
                     )
                     transaction.create(replica_znode, replica_copy.SerializeToString())
 
-        transaction.commit()
+        self.commit_and_log(transaction)
         return collections
 
     def delete_collections(self, collection_names):
         transaction = self.zk.transaction()
 
         for collection_name in collection_names:
-            collection_znode = self.collection_znode(collection_name)
-            for shard_name in self.zk.get_children(collection_znode):
-                shard_znode = self.shard_znode(collection_name, shard_name)
-                for replica_name in self.zk.get_children(shard_znode):
+            shards_znode = self.shard_znode(collection_name)
+            for shard_name in self.zk.get_children(shards_znode):
+                replicas_znode = self.replica_znode(collection_name, shard_name)
+                for replica_name in self.zk.get_children(replicas_znode):
                     replica_znode = self.replica_znode(
                         collection_name, shard_name, replica_name
                     )
                     transaction.delete(replica_znode)
-                transaction.delete(shard_znode)
-            transaction.delete(collection_znode)
+                transaction.delete(replicas_znode)
+                transaction.delete(self.shard_znode(collection_name, shard_name))
+            transaction.delete(shards_znode)
+            transaction.delete(self.collection_znode(collection_name))
 
-        transaction.commit()
+        self.commit_and_log(transaction)
         return collection_names
 
     def list_nodes(self):
@@ -250,10 +253,13 @@ class ZookeeperClusterManager(ClusterManager):
                         replica_znode = self.replica_znode(
                             collection_name, shard_name, replica_hostport
                         )
-                        replica_data, _ = (
-                            self.zk.get(replica_znode) if load_replica else (None, None)
-                        )
-                        replica_proto = collections_pb2.Replica.FromString(replica_data)
+                        if load_replica:
+                            replica_data, _ = self.zk.get(replica_znode)
+                            replica_proto = collections_pb2.Replica.FromString(
+                                replica_data
+                            )
+                        else:
+                            replica_proto = collections_pb2.Replica()
                         replicas.append(replica_proto)
 
                 if replicas:
@@ -305,12 +311,23 @@ class ZookeeperClusterManager(ClusterManager):
                 replica_znode = self.replica_znode(
                     collection_name, shard_name, hostport
                 )
-                node = self.cache.get_data(self.this_node_znode)
+                node = self.cache.get_data(replica_znode)
                 if node:
-                    replica = self.cache.get_data(replica_znode)
-                    replica = collections_pb2.Replica.FromString(replica.data)
+                    replica = collections_pb2.Replica.FromString(node.data)
                     if replica.state == collections_pb2.Replica.ACTIVE:
                         active_hostports.append(hostport)
             hostports = active_hostports
 
         return hostports
+
+    def commit_and_log(self, transaction: kazoo.client.TransactionRequest) -> bool:
+        """Commit a transaction and log the first exception after rollbacks"""
+        for result, operation in zip(transaction.commit(), transaction.operations):
+            if isinstance(result, kazoo.exceptions.RolledBackError):
+                continue
+            elif isinstance(result, Exception):
+                logger.error(
+                    f"{result.__class__.__name__} in Kazoo transaction: {operation}"
+                )
+                return False
+        return True
