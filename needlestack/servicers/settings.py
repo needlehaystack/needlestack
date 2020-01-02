@@ -1,6 +1,8 @@
 import socket
 from typing import List, Optional
 
+import grpc
+
 
 class BaseConfig(object):
     """Base configuration for gRPC services
@@ -38,6 +40,8 @@ class BaseConfig(object):
     MAX_WORKERS: int
     HOSTNAME: str
     SERVICER_PORT: int
+    SERVICER_SSL_PRIVATE_KEY_FILE: Optional[str] = None
+    SERVICER_SSL_CERT_CHAIN_FILE: Optional[str] = None
 
     CLUSTER_NAME: str
     HOSTPORT: str
@@ -48,6 +52,21 @@ class BaseConfig(object):
     @property
     def hostport(self):
         return f"{self.HOSTNAME}:{self.SERVICER_PORT}"
+
+    @property
+    def use_ssl(self):
+        return self.SERVICER_SSL_PRIVATE_KEY_FILE and self.SERVICER_SSL_CERT_CHAIN_FILE
+
+    @property
+    def ssl_server_credentials(self):
+        if self.use_ssl:
+            with open(self.SERVICER_SSL_PRIVATE_KEY_FILE, "rb") as f:
+                private_key = f.read()
+            with open(self.SERVICER_SSL_CERT_CHAIN_FILE, "rb") as f:
+                certificate_chain = f.read()
+            return grpc.ssl_server_credentials([(private_key, certificate_chain)])
+        else:
+            return None
 
 
 class LocalDockerConfig(BaseConfig):

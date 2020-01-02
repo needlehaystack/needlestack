@@ -28,7 +28,7 @@ class ClusterManager(object):
         shard_name: Optional[str] = None,
         hostport: Optional[str] = None,
     ):
-        """Set the state of replica nodes """
+        """Set the state of replica nodes"""
         raise NotImplementedError()
 
     def set_local_state(
@@ -37,7 +37,7 @@ class ClusterManager(object):
         collection_name: Optional[str] = None,
         shard_name: Optional[str] = None,
     ):
-        """Set the state of replica nodes """
+        """Set the state of local replica nodes"""
         raise NotImplementedError()
 
     def add_collections(

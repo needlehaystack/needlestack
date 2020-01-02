@@ -5,10 +5,10 @@ from concurrent import futures
 
 import grpc
 from grpc._server import _Server
+from grpc_health.v1.health import HealthServicer
 
 from needlestack.apis import health_pb2_grpc
 from needlestack.apis import servicers_pb2_grpc
-from needlestack.servicers.health import HealthServicer
 from needlestack.servicers.merger import MergerServicer
 from needlestack.servicers.searcher import SearcherServicer
 from needlestack.servicers.settings import BaseConfig
@@ -28,7 +28,10 @@ def create_server(config: BaseConfig) -> _Server:
     """
     configure_logger(config)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.MAX_WORKERS))
-    server.add_insecure_port(f"[::]:{config.SERVICER_PORT}")
+    if config.use_ssl:
+        server.add_secure_port(f"[::]:{config.SERVICER_PORT}", config.ssl_server_credentials)
+    else:
+        server.add_insecure_port(f"[::]:{config.SERVICER_PORT}")
     health_pb2_grpc.add_HealthServicer_to_server(HealthServicer(), server)
     return server
 

@@ -45,7 +45,7 @@ clean-proto:
 	find . -name '*_pb2.pyi' -delete
 	find . -name '*_pb2_grpc.py' -delete
 
-test-all: compile-proto-test auto-format test lint test-typing
+test-all: compile-proto-test auto-format lint test test-typing
 
 auto-format:
 	black needlestack tests
