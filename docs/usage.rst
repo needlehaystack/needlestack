@@ -80,12 +80,12 @@ with the following requests.
 
 .. code-block:: python
 
+    from grpc_health.v1 import health_pb2
     from needlestack.apis import clients
-    from needlestack.apis import health_pb2
 
     hostname = "localhost:50051"
     stub = clients.get_health_stub(hostname)
-    stub.Check(health_pb2.HealthCheckRequest())
+    stub.Check(health_pb2.HealthCheckRequest(service="merger"))
 
 
 Configuration

@@ -20,14 +20,6 @@ needlestack.servicers.factory module
    :undoc-members:
    :show-inheritance:
 
-needlestack.servicers.health module
------------------------------------
-
-.. automodule:: needlestack.servicers.health
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 needlestack.servicers.logging module
 ------------------------------------
 

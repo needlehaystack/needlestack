@@ -133,10 +133,9 @@ class BaseIndex(object):
             k: Number of neighbors
         """
         dists, idxs = self.knn_search(X, k)
-        dtype = dists.dtype
         batches = []
         for dist, idx in zip(dists, idxs):
-            if dtype == "float32" or dtype == "float16":
+            if dists.dtype == "float32" or dists.dtype == "float16":
                 results = [
                     indices_pb2.SearchResultItem(
                         float_distance=d, metadata=self._get_metadata_by_index(i)

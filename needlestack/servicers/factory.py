@@ -5,15 +5,10 @@ from concurrent import futures
 
 import grpc
 from grpc._server import _Server
-from grpc_health.v1.health import HealthServicer
 
-from needlestack.apis import health_pb2_grpc
-from needlestack.apis import servicers_pb2_grpc
-from needlestack.servicers.merger import MergerServicer
-from needlestack.servicers.searcher import SearcherServicer
 from needlestack.servicers.settings import BaseConfig
 from needlestack.servicers.logging import configure_logger
-from needlestack.cluster_managers.zookeeper import ZookeeperClusterManager
+from needlestack.cluster_managers.manager import ClusterManager
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -29,40 +24,28 @@ def create_server(config: BaseConfig) -> _Server:
     configure_logger(config)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.MAX_WORKERS))
     if config.use_ssl:
-        server.add_secure_port(f"[::]:{config.SERVICER_PORT}", config.ssl_server_credentials)
+        server.add_secure_port(
+            f"[::]:{config.SERVICER_PORT}", config.ssl_server_credentials
+        )
     else:
         server.add_insecure_port(f"[::]:{config.SERVICER_PORT}")
-    health_pb2_grpc.add_HealthServicer_to_server(HealthServicer(), server)
     return server
 
 
-def create_zookeeper_cluster_manager(config: BaseConfig) -> ZookeeperClusterManager:
+def create_zookeeper_cluster_manager(config: BaseConfig) -> ClusterManager:
     """Create a Zookeeper client for cluster managment.
 
     Args:
         config: Config with settings on how to set up a Zookeeper client
     """
+    from needlestack.cluster_managers.zookeeper import ZookeeperClusterManager
+
     return ZookeeperClusterManager(
         config.CLUSTER_NAME,
         config.hostport,
         config.ZOOKEEPER_HOSTS,
         config.ZOOKEEPER_ROOT,
     )
-
-
-def get_merger_servicer(server: _Server, zk: ZookeeperClusterManager) -> MergerServicer:
-    """"""
-    servicer = MergerServicer(zk)
-    servicers_pb2_grpc.add_MergerServicer_to_server(servicer, server)
-    return servicer
-
-
-def get_searcher_servicer(
-    server: _Server, zk: ZookeeperClusterManager
-) -> SearcherServicer:
-    servicer = SearcherServicer(zk)
-    servicers_pb2_grpc.add_SearcherServicer_to_server(servicer, server)
-    return servicer
 
 
 def serve(server: _Server):

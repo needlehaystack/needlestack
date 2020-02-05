@@ -1,6 +1,7 @@
+from grpc_health.v1.health_pb2_grpc import HealthStub
+
 from needlestack.apis import clients
 from needlestack.apis.servicers_pb2_grpc import MergerStub, SearcherStub
-from needlestack.apis.health_pb2_grpc import HealthStub
 
 
 def test_clients_stub_creaters():

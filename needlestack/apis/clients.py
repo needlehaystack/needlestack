@@ -2,16 +2,23 @@ from typing import Dict
 
 import grpc
 from grpc._channel import Channel
+from grpc_health.v1.health_pb2_grpc import HealthStub
 
 from needlestack.apis.servicers_pb2_grpc import MergerStub, SearcherStub
 
 CHANNELS: Dict[str, Channel] = {}
+HEALTH_STUBS: Dict[str, HealthStub] = {}
 MERGER_STUBS: Dict[str, MergerStub] = {}
 SEARCHER_STUBS: Dict[str, SearcherStub] = {}
 
 
 def create_channel(hostport: str) -> Channel:
     return grpc.insecure_channel(hostport)
+
+
+def create_health_stub(hostport: str) -> HealthStub:
+    channel = get_channel(hostport)
+    return HealthStub(channel)
 
 
 def create_merger_stub(hostport: str) -> MergerStub:
@@ -31,6 +38,15 @@ def get_channel(hostport: str) -> Channel:
         channel = create_channel(hostport)
         CHANNELS[hostport] = channel
         return channel
+
+
+def get_health_stub(hostport: str) -> HealthStub:
+    if hostport in HEALTH_STUBS:
+        return HEALTH_STUBS[hostport]
+    else:
+        stub = create_health_stub(hostport)
+        HEALTH_STUBS[hostport] = stub
+        return stub
 
 
 def get_merger_stub(hostport: str) -> MergerStub:

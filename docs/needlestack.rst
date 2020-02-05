@@ -14,6 +14,18 @@ Subpackages
    needlestack.indices
    needlestack.servicers
 
+Submodules
+----------
+
+needlestack.exceptions module
+-----------------------------
+
+.. automodule:: needlestack.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 Module contents
 ---------------
 

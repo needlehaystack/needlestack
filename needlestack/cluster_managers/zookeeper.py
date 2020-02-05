@@ -119,7 +119,7 @@ class ZookeeperClusterManager(ClusterManager):
                     )
                     transaction.delete(znode)
 
-        self.commit_and_log(transaction)
+        self.commit_transaction(transaction)
 
     def register_merger(self):
         pass
@@ -154,10 +154,10 @@ class ZookeeperClusterManager(ClusterManager):
                     replica.state = state
                     transaction.set_data(znode, replica.SerializeToString())
 
-        self.commit_and_log(transaction)
+        return self.commit_transaction(transaction)
 
     def set_local_state(self, state, collection_name=None, shard_name=None):
-        self.set_state(state, collection_name, shard_name, self.hostport)
+        return self.set_state(state, collection_name, shard_name, self.hostport)
 
     def signal_listener(self, signum, frame):
         self.shutdown()
@@ -195,8 +195,10 @@ class ZookeeperClusterManager(ClusterManager):
                     )
                     transaction.create(replica_znode, replica_copy.SerializeToString())
 
-        self.commit_and_log(transaction)
-        return collections
+        if self.commit_transaction(transaction):
+            return collections
+        else:
+            return []
 
     def delete_collections(self, collection_names):
         transaction = self.zk.transaction()
@@ -215,8 +217,10 @@ class ZookeeperClusterManager(ClusterManager):
             transaction.delete(shards_znode)
             transaction.delete(self.collection_znode(collection_name))
 
-        self.commit_and_log(transaction)
-        return collection_names
+        if self.commit_transaction(transaction):
+            return collection_names
+        else:
+            return []
 
     def list_nodes(self):
         live_nodes = self.zk.get_children(self.live_nodes_znode)
@@ -320,7 +324,7 @@ class ZookeeperClusterManager(ClusterManager):
 
         return hostports
 
-    def commit_and_log(self, transaction: kazoo.client.TransactionRequest) -> bool:
+    def commit_transaction(self, transaction: kazoo.client.TransactionRequest) -> bool:
         """Commit a transaction and log the first exception after rollbacks"""
         for result, operation in zip(transaction.commit(), transaction.operations):
             if isinstance(result, kazoo.exceptions.RolledBackError):

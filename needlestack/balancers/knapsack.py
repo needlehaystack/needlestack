@@ -40,6 +40,9 @@ class Item(object):
     def weight(self):
         return self.shard.weight
 
+    def __hash__(self):
+        return hash(self.id)
+
 
 class Knapsack(object):
     """Knapsack that can hold multiple items
@@ -76,8 +79,13 @@ class Knapsack(object):
             self.items.add(item)
             self.current_weight += item.weight
 
+    def __hash__(self):
+        return hash(self.id)
+
 
 class Algorithm(object):
+    """Superclass for algorithm to place items in knapsacks"""
+
     def add(self, items: List[Item], knapsacks: List[Knapsack]):
         raise NotImplementedError()
 
@@ -85,7 +93,7 @@ class Algorithm(object):
         raise NotImplementedError()
 
 
-def add_collections(
+def calculate_add(
     nodes: List[collections_pb2.Node],
     current_collections: List[collections_pb2.Collection],
     add_collections: List[collections_pb2.Collection],
@@ -114,7 +122,7 @@ def add_collections(
     return [collection for collection in collections if collection.name in add_set]
 
 
-def rebalance_collections(
+def calculate_rebalance(
     nodes: List[collections_pb2.Node],
     current_collections: List[collections_pb2.Collection],
     algorithm: Algorithm,
@@ -127,6 +135,8 @@ def rebalance_collections(
 def _collections_to_knapsacks(
     nodes: List[collections_pb2.Node], collections: List[collections_pb2.Collection]
 ) -> List[Knapsack]:
+    """A helper function to take a list of collections and convert items to knapsacks"""
+
     knapsacks_map = {node.hostport: Knapsack(node) for node in nodes}
 
     for collection in collections:
@@ -142,22 +152,25 @@ def _collections_to_knapsacks(
 def _knapsacks_to_collections(
     knapsacks: List[Knapsack]
 ) -> List[collections_pb2.Collection]:
-    items_map = {}
-    items_to_knapsacks: Dict[str, List[Knapsack]] = {}
+    """A helper function to take knapsacks filled with items and convert it a list of collections.
+
+    TODO: The mutation by accessing the collections and shards directly in the Items gets confusing.
+    Find a way to make this function more pure.
+    """
+
+    items_to_knapsacks: Dict[Item, List[Knapsack]] = {}
     for knapsack in knapsacks:
         for item in knapsack.items:
-            items_map[item.id] = item
-            items_to_knapsacks[item.id] = items_to_knapsacks.get(item.id, [])
-            items_to_knapsacks[item.id].append(knapsack)
+            items_to_knapsacks[item] = items_to_knapsacks.get(item, [])
+            items_to_knapsacks[item].append(knapsack)
 
     collections_map = {}
-    for item in items_map.values():
+    for item in items_to_knapsacks.keys():
         item.shard.ClearField("replicas")
         item.collection.ClearField("shards")
         collections_map[item.collection.name] = item.collection
 
-    for item_id, knapsacks in items_to_knapsacks.items():
-        item = items_map[item_id]
+    for item, knapsacks in items_to_knapsacks.items():
         replicas = [
             collections_pb2.Replica(node=knapsack.node) for knapsack in knapsacks
         ]

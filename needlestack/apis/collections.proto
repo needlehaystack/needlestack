@@ -21,7 +21,7 @@ message CollectionsListResponse {
 
 /********************
  *
- * Configure Requests
+ * Add/Delete Requests
  * 
  ********************/
 

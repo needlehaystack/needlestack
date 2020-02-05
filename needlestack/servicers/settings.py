@@ -19,9 +19,13 @@ class BaseConfig(object):
         MAX_WORKERS: Number of worker threads per gRPC server
         HOSTNAME: Hostname of node
         SERVICER_PORT: Port of gRPC server
+        SERVICER_SSL_PRIVATE_KEY_FILE: SSL private key file
+        SERVICER_SSL_CERT_CHAIN_FILE: SSL certificate chain file
         CLUSTER_NAME: Name for Needlestack cluster
         ZOOKEEPER_HOSTS: List of Zookeeper host for cluster manager
         hostport: Hostport to gRPC server
+        use_ssl: Should SSL be used
+        ssl_server_credentials: gRPC SSL server credentials
     """
 
     DEBUG = False

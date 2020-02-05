@@ -27,7 +27,7 @@ class ClusterManager(object):
         collection_name: Optional[str] = None,
         shard_name: Optional[str] = None,
         hostport: Optional[str] = None,
-    ):
+    ) -> bool:
         """Set the state of replica nodes"""
         raise NotImplementedError()
 
@@ -36,7 +36,7 @@ class ClusterManager(object):
         state: collections_pb2.Replica.State,
         collection_name: Optional[str] = None,
         shard_name: Optional[str] = None,
-    ):
+    ) -> bool:
         """Set the state of local replica nodes"""
         raise NotImplementedError()
 
