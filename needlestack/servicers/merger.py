@@ -12,6 +12,7 @@ from needlestack.apis import servicers_pb2_grpc
 from needlestack.balancers import calculate_add
 from needlestack.balancers.greedy import GreedyAlgorithm
 from needlestack.cluster_managers import ClusterManager
+from needlestack.servicers.settings import BaseConfig
 from needlestack.servicers.decorators import unhandled_exception_rpc
 
 logger = logging.getLogger("needlestack")
@@ -21,7 +22,8 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
     """A gRPC servicer to accept external requests, use searcher nodes, and
     merge results together."""
 
-    def __init__(self, cluster_manager: ClusterManager):
+    def __init__(self, config: BaseConfig, cluster_manager: ClusterManager):
+        self.config = config
         self.cluster_manager = cluster_manager
         self.cluster_manager.register_merger()
 
@@ -34,7 +36,9 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         futures = []
         for hostport, shard_names in hostports_shards:
-            stub = clients.get_searcher_stub(hostport)
+            stub = clients.get_searcher_stub(
+                hostport, self.config.SERVICER_SSL_CERT_CHAIN_FILE
+            )
             subrequest = servicers_pb2.SearchRequest(
                 vector=request.vector,
                 count=request.count,
@@ -71,7 +75,9 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         futures = []
         for hostport, shard_names in hostports_shards:
-            stub = clients.get_searcher_stub(hostport)
+            stub = clients.get_searcher_stub(
+                hostport, self.config.SERVICER_SSL_CERT_CHAIN_FILE
+            )
             subrequest = servicers_pb2.RetrieveRequest(
                 id=request.id,
                 collection_name=request.collection_name,
@@ -147,7 +153,9 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
         futures = []
         nodes = self.cluster_manager.list_nodes()
         for node in nodes:
-            stub = clients.get_searcher_stub(node.hostport)
+            stub = clients.get_searcher_stub(
+                node.hostport, self.config.SERVICER_SSL_CERT_CHAIN_FILE
+            )
             subrequest = collections_pb2.CollectionsLoadRequest()
             future = stub.CollectionsLoad.future(subrequest)
             futures.append((node.hostport, future))

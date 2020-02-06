@@ -10,6 +10,7 @@ from needlestack.apis import serializers
 from needlestack.collections.collection import Collection
 from needlestack.collections.shard import Shard
 from needlestack.cluster_managers import ClusterManager
+from needlestack.servicers.settings import BaseConfig
 from needlestack.servicers.decorators import unhandled_exception_rpc
 
 
@@ -22,7 +23,8 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
     collections: Dict[str, Collection]
     collections_proto: Dict[str, collections_pb2.Collection]
 
-    def __init__(self, cluster_manager: ClusterManager):
+    def __init__(self, config: BaseConfig, cluster_manager: ClusterManager):
+        self.config = config
         self.cluster_manager = cluster_manager
         self.collections = {}
         self.collections_proto = {}

@@ -42,6 +42,7 @@ class FaissIndex(BaseIndex):
     def populate(self, data):
         self.index = data.get("index")
         self.metadatas = data.get("metadatas")
+        self.modified_time = data.get("modified_time")
 
     def serialize(self):
         with tempfile.NamedTemporaryFile() as f:
@@ -53,7 +54,6 @@ class FaissIndex(BaseIndex):
         )
 
     def _load(self):
-        modified_time = self.data_source.last_modified
         with self.data_source.get_content() as content:
             proto = indices_pb2.FaissIndex.FromString(content.read())
 
@@ -61,9 +61,15 @@ class FaissIndex(BaseIndex):
             f.write(proto.index_binary)
             f.seek(0)
             proto.ClearField("index_binary")
-            self.index = faiss.read_index(f.name)
-        self.metadatas = proto.metadatas
-        self.modified_time = modified_time
+            faiss_index = faiss.read_index(f.name)
+
+        self.populate(
+            {
+                "index": faiss_index,
+                "metadatas": proto.metadatas,
+                "modified_time": self.data_source.last_modified,
+            }
+        )
 
         self._set_id_to_vector(self.enable_id_to_vector)
 

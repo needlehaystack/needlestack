@@ -18,7 +18,7 @@ def main():
     manager = factory.create_zookeeper_cluster_manager(config)
     manager.startup()
 
-    servicers_pb2_grpc.add_MergerServicer_to_server(MergerServicer(manager), server)
+    servicers_pb2_grpc.add_MergerServicer_to_server(MergerServicer(config, manager), server)
 
     health = HealthServicer()
     health_pb2_grpc.add_HealthServicer_to_server(health, server)
