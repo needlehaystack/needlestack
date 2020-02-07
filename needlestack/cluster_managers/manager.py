@@ -52,11 +52,11 @@ class ClusterManager(object):
         raise NotImplementedError()
 
     def list_collections(
-        self, collection_names: Optional[List[str]] = None
+        self, collection_names: Optional[List[str]] = None, include_state: Optional[bool] = True
     ) -> List[collections_pb2.Collection]:
         raise NotImplementedError()
 
-    def list_local_collections(self) -> List[collections_pb2.Collection]:
+    def list_local_collections(self, include_state: Optional[bool] = True) -> List[collections_pb2.Collection]:
         raise NotImplementedError()
 
     def get_searchers(

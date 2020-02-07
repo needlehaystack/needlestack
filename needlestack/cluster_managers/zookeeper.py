@@ -229,11 +229,11 @@ class ZookeeperClusterManager(ClusterManager):
         nodes = [collections_pb2.Node(hostport=node) for node in live_nodes]
         return nodes
 
-    def list_collections(self, collection_names=None):
-        return self._list_collections(collection_names)
+    def list_collections(self, collection_names=None, include_state=True):
+        return self._list_collections(collection_names, load_replica=include_state)
 
-    def list_local_collections(self):
-        return self._list_collections(hostport=self.hostport)
+    def list_local_collections(self, include_state=True):
+        return self._list_collections(hostport=self.hostport, load_replica=include_state)
 
     def _list_collections(
         self,

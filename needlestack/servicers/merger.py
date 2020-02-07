@@ -129,6 +129,13 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
         collection_names = request.names
         success = True
 
+        new_names = set(collection_names)
+        current_names = {collection.name for collection in self.cluster_manager.list_collections()}
+        if not new_names <= current_names:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details(f"Collections {new_names - current_names} do not exists")
+            return collections_pb2.CollectionsDeleteResponse()
+
         if not request.noop:
             self.cluster_manager.delete_collections(collection_names)
             success = self.collections_load()

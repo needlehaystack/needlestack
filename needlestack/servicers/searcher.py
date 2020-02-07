@@ -21,13 +21,13 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
     """A gRPC servicer to perform kNN queries on in-memory index structures"""
 
     collections: Dict[str, Collection]
-    collections_proto: Dict[str, collections_pb2.Collection]
+    collection_protos: Dict[str, collections_pb2.Collection]
 
     def __init__(self, config: BaseConfig, cluster_manager: ClusterManager):
         self.config = config
         self.cluster_manager = cluster_manager
         self.collections = {}
-        self.collections_proto = {}
+        self.collection_protos = {}
         self.cluster_manager.register_searcher()
         self.load_collections()
 
@@ -77,8 +77,8 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
             - An existing collection added/dropped shards
             - No changes
         """
-        collection_protos = self.cluster_manager.list_local_collections()
-        current_collections = {name for name in self.collections_proto.keys()}
+        collection_protos = self.cluster_manager.list_local_collections(include_state=False)
+        current_collections = {name for name in self.collection_protos.keys()}
         new_collections = {proto.name for proto in collection_protos}
         for proto in collection_protos:
             if proto.name in current_collections:
@@ -88,9 +88,10 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
         for name in current_collections:
             if name not in new_collections:
                 self._drop_collection(name)
-        self.collection_protos = collection_protos
+        self.collection_protos = {proto.name: proto for proto in collection_protos}
 
     def _add_collection(self, proto: collections_pb2.Collection):
+        logger.debug(f"Add collection {proto.name}")
         collection = Collection.from_proto(proto)
         self.cluster_manager.set_local_state(
             collections_pb2.Replica.BOOTING, collection.name
@@ -102,10 +103,11 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
         )
 
     def _drop_collection(self, name: str):
+        logger.debug(f"Drop collection {name}")
         del self.collections[name]
 
     def _modify_collection(self, proto: collections_pb2.Collection):
-        old_proto = self.collections_proto[proto.name]
+        old_proto = self.collection_protos[proto.name]
         if old_proto.SerializeToString() != proto.SerializeToString():
             collection = self.get_collection(proto.name)
             collection.merge_proto(proto)
@@ -115,6 +117,7 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
 
             for name, new_shard in new_shards.items():
                 if name not in old_shards:
+                    logger.debug(f"Add collection shard {proto.name}/{name}")
                     self.cluster_manager.set_local_state(
                         collections_pb2.Replica.BOOTING, collection.name, name
                     )
@@ -123,6 +126,7 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
                     new_shard.SerializeToString()
                     != old_shards[name].SerializeToString()
                 ):
+                    logger.debug(f"Update collection shard {proto.name}/{name}")
                     self.cluster_manager.set_local_state(
                         collections_pb2.Replica.BOOTING, collection.name, name
                     )
@@ -131,6 +135,7 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
 
             for name in old_shards.keys():
                 if name not in new_shards:
+                    logger.debug(f"Drop collection shard {proto.name}/{name}")
                     collection.drop_shard(name)
 
             collection.load()
