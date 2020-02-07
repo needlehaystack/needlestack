@@ -233,7 +233,9 @@ class ZookeeperClusterManager(ClusterManager):
         return self._list_collections(collection_names, load_replica=include_state)
 
     def list_local_collections(self, include_state=True):
-        return self._list_collections(hostport=self.hostport, load_replica=include_state)
+        return self._list_collections(
+            hostport=self.hostport, load_replica=include_state
+        )
 
     def _list_collections(
         self,

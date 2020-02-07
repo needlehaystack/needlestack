@@ -77,7 +77,9 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
             - An existing collection added/dropped shards
             - No changes
         """
-        collection_protos = self.cluster_manager.list_local_collections(include_state=False)
+        collection_protos = self.cluster_manager.list_local_collections(
+            include_state=False
+        )
         current_collections = {name for name in self.collection_protos.keys()}
         new_collections = {proto.name for proto in collection_protos}
         for proto in collection_protos:
