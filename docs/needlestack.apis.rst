@@ -44,6 +44,14 @@ needlestack.apis.data\_sources\_pb2\_grpc module
    :undoc-members:
    :show-inheritance:
 
+needlestack.apis.indexing module
+--------------------------------
+
+.. automodule:: needlestack.apis.indexing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 needlestack.apis.indices\_pb2 module
 ------------------------------------
 

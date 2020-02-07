@@ -145,7 +145,9 @@ class ZookeeperClusterManager(ClusterManager):
         for collection in self._list_collections(
             collections, hostport=hostport, load_replica=True
         ):
-            logger.info(f"Set states for {collection.name} shard ZNodes")
+            logger.info(
+                f"Set {collection.name}/shards ZNodes to {collections_pb2.Replica.State.Name(state)}"
+            )
             for shard in collection.shards:
                 for replica in shard.replicas:
                     znode = self.replica_znode(

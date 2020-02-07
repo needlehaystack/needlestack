@@ -114,7 +114,8 @@ def metadata_to_proto(
     fieldtypes: Optional[Tuple[str]] = None,
     fieldnames: Optional[Tuple[str]] = None,
 ) -> indices_pb2.Metadata:
-    """Serialize a set of metadata fields for some item
+    """Serialize a set of metadata fields for some item.
+    Skips over None fields
 
     Args:
         id: ID for item
@@ -127,6 +128,7 @@ def metadata_to_proto(
     metadata_fields = [
         metadata_field_to_proto(field, fieldtype, fieldname)
         for field, fieldtype, fieldname in zip(fields, _fieldtypes, _fieldnames)
+        if field is not None
     ]
     return indices_pb2.Metadata(id=id, fields=metadata_fields)
 

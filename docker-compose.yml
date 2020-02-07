@@ -125,3 +125,10 @@ services:
     command: make sphinx-docs
     volumes:
       - ./:/app
+
+  make-test-data:
+    <<: *test-build
+    command: >
+      bash -c "python examples/indexing_job.py && python examples/add_collections.py"
+    volumes:
+      - ./:/app

@@ -50,10 +50,10 @@ def create_zookeeper_cluster_manager(config: BaseConfig) -> ClusterManager:
 
 def serve(server: _Server):
     server.start()
-    logger.warning(f"Started gRPC server on {os.getpid()}")
+    logger.info(f"Started gRPC server on {os.getpid()}")
     try:
         while True:
             time.sleep(_ONE_DAY_IN_SECONDS)
     except KeyboardInterrupt:
-        logger.warning(f"Stopped gRPC server on {os.getpid()}")
+        logger.info(f"Stopped gRPC server on {os.getpid()}")
         server.stop(0)
