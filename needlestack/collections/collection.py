@@ -54,6 +54,12 @@ class Collection(object):
             shard.load()
         self.validate()
 
+    def update_available(self) -> bool:
+        for shard in self.shards.values():
+            if shard.update_available():
+                return True
+        return False
+
     def validate(self):
         shard_dimensions = {shard.index.dimension for shard in self.shards.values()}
         if len(shard_dimensions) > 1:

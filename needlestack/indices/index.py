@@ -73,7 +73,7 @@ class BaseIndex(object):
         """Load data into memory"""
         raise NotImplementedError()
 
-    def _update_available(self):
+    def update_available(self):
         """Data source has an update available"""
         raise NotImplementedError()
 

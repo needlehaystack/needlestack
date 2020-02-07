@@ -38,6 +38,9 @@ class Shard(object):
         self.index.enable_id_to_vector = self.enable_id_to_vector
         self.index.load()
 
+    def update_available(self) -> bool:
+        return self.index.update_available()
+
     def set_vectors(self, X: np.ndarray, metadatas: List[indices_pb2.Metadata]):
         return self.index.set_vectors(X, metadatas)
 

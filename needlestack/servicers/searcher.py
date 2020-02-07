@@ -88,6 +88,16 @@ class SearcherServicer(servicers_pb2_grpc.SearcherServicer):
         for name in current_collections:
             if name not in new_collections:
                 self._drop_collection(name)
+        for collection in self.collections.values():
+            if collection.update_available():
+                logger.debug(f"Update collection {collection.name}")
+                self.cluster_manager.set_local_state(
+                    collections_pb2.Replica.BOOTING, collection.name
+                )
+                collection.load()
+                self.cluster_manager.set_local_state(
+                    collections_pb2.Replica.ACTIVE, collection.name
+                )
         self.collection_protos = {proto.name: proto for proto in collection_protos}
 
     def _add_collection(self, proto: collections_pb2.Collection):
