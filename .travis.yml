@@ -7,7 +7,7 @@ services:
   - docker
 
 env:
-  - DOCKER_COMPOSE_VERSION=1.25.2
+  - DOCKER_COMPOSE_VERSION=v1.25.2
 
 # Pin docker-compose version
 before_install:
