@@ -35,21 +35,11 @@ Features
 
 Limitations
 -----------
-The current alpha builds have limitations that make them difficult to use in production.
+The current beta builds have limitations that make them difficult to use in production.
 These should be addressed in future builds.
 
 Caveats
 ~~~~~~~
 
 - Vectors must be manually sharded, indexed, and serialized to disk as protobufs
-- When shard protobuf files update, ``SearcherServicers`` in the cluster must be restarted
 - Only kNN library currently supported is `Faiss <https://github.com/facebookresearch/faiss/>`_
-
-Solutions
-~~~~~~~~~
-
-- Provide module to automatically shard and serialize a collection of vectors
-- Provide gRPC endpoint to index vectors in real-time
-- Allow vectors to be loaded from various data sources (S3, GCS, etc)
-- Update vectors without restarting the cluster
-- Add support for other kNN libraries
