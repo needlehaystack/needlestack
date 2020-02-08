@@ -16,13 +16,13 @@ from needlestack.servicers.settings import BaseConfig
 
 
 @pytest.fixture
-def ssl_key_path():
-    return Path("data/key.pem")
+def ssl_key_path(tmpdir):
+    return Path("tests/credentials/key.pem")
 
 
 @pytest.fixture
-def ssl_cert_path():
-    return Path("data/cert.pem")
+def ssl_cert_path(tmpdir):
+    return Path("tests/credentials/cert.pem")
 
 
 @pytest.fixture

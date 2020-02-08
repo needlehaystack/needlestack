@@ -21,11 +21,11 @@ compile-proto-test:
 		--grpc_python_out=. \
 		./needlestack/apis/*.proto
 
-make-ssl-certs:
+gen-ssl-certs:
 	mkdir -p data
 	openssl req -new -newkey rsa:4096 -days 1000 -nodes -x509 \
 	    -subj "/C=US/ST=NY/L=New York/O=Needlehaystack/CN=merger-grpc" \
-	    -keyout data/key.pem  -out data/cert.pem
+	    -keyout data/key.pem -out data/cert.pem
 
 clean: clean-build clean-pyc clean-test clean-proto
 
