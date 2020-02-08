@@ -15,7 +15,7 @@ def test_unhandled_exception_rpc():
 
 
 def test_unhandled_exception_rpc_exception():
-    expection_text = "some excpetion thrown"
+    expection_text = "some exception thrown"
 
     @decorators.unhandled_exception_rpc(Message)
     def raise_exception(self, request, context):

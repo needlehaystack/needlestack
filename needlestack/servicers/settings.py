@@ -59,7 +59,10 @@ class BaseConfig(object):
 
     @property
     def use_ssl(self):
-        return self.SERVICER_SSL_PRIVATE_KEY_FILE and self.SERVICER_SSL_CERT_CHAIN_FILE
+        return (
+            self.SERVICER_SSL_PRIVATE_KEY_FILE is not None
+            and self.SERVICER_SSL_CERT_CHAIN_FILE is not None
+        )
 
     @property
     def ssl_server_credentials(self):
