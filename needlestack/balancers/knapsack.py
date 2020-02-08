@@ -150,7 +150,7 @@ def _collections_to_knapsacks(
 
 
 def _knapsacks_to_collections(
-    knapsacks: List[Knapsack]
+    knapsacks: List[Knapsack],
 ) -> List[collections_pb2.Collection]:
     """A helper function to take knapsacks filled with items and convert it a list of collections.
 
