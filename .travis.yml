@@ -8,9 +8,6 @@ services:
 
 env:
   - DOCKER_COMPOSE_VERSION=v1.25.2
-  - GRPCIO_VERSION=1.26.0
-  - COVERALLS_VERSION=1.10.0
-  - COVERAGE_VERSION=4.5.4
 
 # Pin docker-compose version
 before_install:
@@ -21,10 +18,10 @@ before_install:
 
 # Install dependencies
 install:
-  - pip install grpcio-tools==${GRPCIO_VERSION}
+  - pip install grpcio-tools==1.26.0
   - make compile-proto
   - docker-compose build test
-  - pip install coveralls==${COVERALLS_VERSION} coverage==${COVERAGE_VERSION}
+  - pip install coveralls==1.10.0 coverage==4.5.4
 
 # Run tests
 script: docker-compose run --rm test
