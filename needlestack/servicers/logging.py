@@ -15,44 +15,38 @@ def configure_logger(config: BaseConfig):
     logger.setLevel(config.LOG_LEVEL)
 
     if config.DEBUG:
-        add_debug_handler(logger, config.DEBUG_LOG_FORMAT, config.LOG_FORMAT_DATE)
+        handler = get_debug_handler(config.DEBUG_LOG_FORMAT, config.LOG_FORMAT_DATE)
+        logger.addHandler(handler)
 
     if config.LOG_FILE:
-        add_file_handler(
-            logger,
-            config.FILE_LOG_FORMAT,
+        handler = get_file_handler(
+            config.LOG_FILE_LOG_FORMAT,
             config.LOG_FORMAT_DATE,
             config.LOG_FILE,
             config.LOG_FILE_MAX_BYTES,
             config.LOG_FILE_BACKUPS,
         )
+        logger.addHandler(handler)
 
 
-def add_debug_handler(logger: logging.Logger, fmt: str, datefmt: str):
-    """Add a debug stdout handler to a logger.
+def get_debug_handler(fmt: str, datefmt: str):
+    """Get a debug stdout logging handler
 
     Args:
-        logger: Logger to add stream handler to
         fmt: Logging format string
         datefmt: Date format
     """
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(fmt, datefmt))
-    logger.addHandler(handler)
+    return handler
 
 
-def add_file_handler(
-    logger: logging.Logger,
-    fmt: str,
-    datefmt: str,
-    log_file: str,
-    max_bytes: int,
-    backup_count: int,
+def get_file_handler(
+    fmt: str, datefmt: str, log_file: str, max_bytes: int, backup_count: int
 ):
-    """Add a rotating file handler to a logger.
+    """Get a rotating file logging handler
 
     Args:
-        logger: Logger to add file handler to
         fmt: Logging format string
         datefmt: Date format
         log_file: Path to log file
@@ -63,4 +57,4 @@ def add_file_handler(
         log_file, maxBytes=max_bytes, backupCount=backup_count
     )
     handler.setFormatter(logging.Formatter(fmt, datefmt))
-    logger.addHandler(handler)
+    return handler

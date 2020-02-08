@@ -21,6 +21,12 @@ compile-proto-test:
 		--grpc_python_out=. \
 		./needlestack/apis/*.proto
 
+gen-ssl-certs:
+	mkdir -p data
+	openssl req -new -newkey rsa:4096 -days 1000 -nodes -x509 \
+	    -subj "/C=US/ST=NY/L=New York/O=Needlehaystack/CN=merger-grpc" \
+	    -keyout data/key.pem -out data/cert.pem
+
 clean: clean-build clean-pyc clean-test clean-proto
 
 clean-build:
@@ -43,13 +49,12 @@ clean-test:
 clean-proto:
 	find . -name '*_pb2.py' -delete
 	find . -name '*_pb2.pyi' -delete
-	find . -name '*_pb2_grpc.py'  -delete
+	find . -name '*_pb2_grpc.py' -delete
 
-test-all: compile-proto-test auto-format test lint test-typing
+test-all: compile-proto-test auto-format lint test test-typing
 
 auto-format:
-	black --target-version py36 --exclude ".*_pb2(_grpc)?\.py" needlestack
-	black --target-version py36 --exclude ".*_pb2(_grpc)?\.py" tests
+	black needlestack tests
 
 test:
 	pytest

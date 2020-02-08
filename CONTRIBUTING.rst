@@ -4,7 +4,7 @@ Contributing
 
 Contributions are welcomed and greatly appreciated!
 These can be done through submitting GitHub issues, fixing bugs, implementing features,
-and documentation. Please read through these guidelines to assure a smooth process.
+and documentation. Needlestack follows the GitFlow branching model.
 
 
 1. GitHub Issue Tracking
@@ -17,7 +17,7 @@ issue tracking.
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Check if the bug or feature has already been submitted. The bug-fix
-or feature could already be in active development
+or feature could already be in active development.
 
 1.2 Create New Issue
 ~~~~~~~~~~~~~~~~~~~~
@@ -59,12 +59,9 @@ with Docker and Docker-Compose
 
     $ docker-compose build
 
-4. Create a branch for local development. Branch names should be prefixed with
-   the type of fix. Run one of the following commands::
+4. Create a branch for local development::
 
-    $ git checkout -b bug/name-for-bugfix
-    $ git checkout -b feature/name-for-feature
-    $ git checkout -b docs/name-for-docs-added
+    $ git flow feature start NAME_OF_FEATURE
 
 5. Implement changes.
 
@@ -89,7 +86,7 @@ with Docker and Docker-Compose
 
     $ git add .
     $ git commit -m "Your detailed description of your changes."
-    $ git push origin branch-type/branch-name
+    $ git flow feature publish NAME_OF_FEATURE
 
 11. Submit a pull request through the GitHub website.
 

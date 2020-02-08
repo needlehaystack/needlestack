@@ -7,36 +7,43 @@ version: '3.4'
 #
 #######################
 
-x-build-args:
-  args: &args 
-    - BASE_IMAGE=3.7.4-slim-stretch
-
-x-environment:
-  environment: &environment
+x-environment: &environment
+  environment:
     PYTHONPATH: '/app'
     LANG: 'en_US.UTF-8'
 
-x-searcher-grpc:
-  searcher-grpc-template: &searcher-grpc-template
-    build:
-      dockerfile: ./docker/needlestack.dockerfile
-      context: .
-      args: *args
-    environment: *environment
-    image: "needlestack-app"
-    volumes:
-      - ./:/app
-    depends_on:
-      - zoo1
-      - zoo2
-      - zoo3
-    command:
-      - python
-      - examples/run_searcher.py
+x-servicer-build: &servicer-build
+  build:
+    dockerfile: ./docker/needlestack.dockerfile
+    context: .
+    args:
+      - BASE_IMAGE=3.7.4-slim-stretch
+  image: "needlestack-app"
 
-x-zookeeper:
-  zookeeper-image: &zookeeper-image
-    image: zookeeper:3.4.13
+x-test-build: &test-build
+  build:
+    dockerfile: ./docker/test.dockerfile
+    context: .
+    args:
+      - BASE_IMAGE=3.7.4-slim-stretch
+  <<: *environment
+  image: "needlestack-test"
+
+x-searcher-grpc-template: &searcher-grpc-template
+  <<: *servicer-build
+  <<: *environment
+  volumes:
+    - ./:/app
+  depends_on:
+    - zoo1
+    - zoo2
+    - zoo3
+  command:
+    - python
+    - examples/run_searcher.py
+
+x-zookeeper-image: &zookeeper-image
+  image: zookeeper:3.5.6
 
 
 #######################
@@ -48,12 +55,8 @@ x-zookeeper:
 services:
 
   merger-grpc:
-    build:
-      dockerfile: ./docker/needlestack.dockerfile
-      context: .
-      args: *args
-    environment: *environment
-    image: "needlestack-app"
+    <<: *servicer-build
+    <<: *environment
     volumes:
       - ./:/app
     depends_on:
@@ -91,7 +94,7 @@ services:
       - 2181:2181
     environment:
       ZOO_MY_ID: 1
-      ZOO_SERVERS: server.1=0.0.0.0:2888:3888 server.2=zoo2:2888:3888 server.3=zoo3:2888:3888
+      ZOO_SERVERS: server.1=0.0.0.0:2888:3888;2181 server.2=zoo2:2888:3888;2181 server.3=zoo3:2888:3888;2181
 
   zoo2:
     <<: *zookeeper-image
@@ -100,7 +103,7 @@ services:
       - 2182:2181
     environment:
       ZOO_MY_ID: 2
-      ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=0.0.0.0:2888:3888 server.3=zoo3:2888:3888
+      ZOO_SERVERS: server.1=zoo1:2888:3888;2181 server.2=0.0.0.0:2888:3888;2181 server.3=zoo3:2888:3888;2181
 
   zoo3:
     <<: *zookeeper-image
@@ -109,24 +112,23 @@ services:
       - 2183:2181
     environment:
       ZOO_MY_ID: 3
-      ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=zoo2:2888:3888 server.3=0.0.0.0:2888:3888
+      ZOO_SERVERS: server.1=zoo1:2888:3888;2181 server.2=zoo2:2888:3888;2181 server.3=0.0.0.0:2888:3888;2181
 
   test:
-    build:
-      dockerfile: ./docker/test.dockerfile
-      context: .
-      args: *args
+    <<: *test-build
     command: make test-all
-    image: "needlestack-test"
     volumes:
       - ./:/app
 
   docs:
-    build:
-      dockerfile: ./docker/test.dockerfile
-      context: .
-      args: *args
+    <<: *test-build
     command: make sphinx-docs
-    image: "needlestack-test"
+    volumes:
+      - ./:/app
+
+  make-test-data:
+    <<: *test-build
+    command: >
+      bash -c "python examples/indexing_job.py && python examples/add_collections.py"
     volumes:
       - ./:/app

@@ -11,7 +11,6 @@ RUN apt update && \
 COPY . /app
 WORKDIR /app
 
-# A `MergerServicer` container doesn't not need all these requirements
 RUN pip install -r /app/requirements-freeze.txt
 
 RUN make compile-proto
