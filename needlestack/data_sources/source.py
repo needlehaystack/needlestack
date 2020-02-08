@@ -16,12 +16,18 @@ class DataSource(object):
         Args:
             proto: Protobuf defining how to access data
         """
+        data_source: DataSource
         source = proto.WhichOneof("source")
         if source == "local_data_source":
             from needlestack.data_sources.local import LocalDataSource
 
             data_source = LocalDataSource()
             data_source.populate_from_proto(proto.local_data_source)
+        elif source == "gcs_data_source":
+            from needlestack.data_sources.gcs import GcsDataSource
+
+            data_source = GcsDataSource()
+            data_source.populate_from_proto(proto.gcs_data_source)
         else:
             raise DeserializationError("No valid data source found from protobuf")
 
@@ -47,5 +53,5 @@ class DataSource(object):
 
     @contextmanager
     def get_content(self, mode: str):
-        """Yield pickle serialized data from the data source"""
+        """Yield raw data from the data source"""
         raise NotImplementedError()

@@ -5,10 +5,19 @@ syntax = "proto3";
 message DataSource {
     oneof source {
         LocalDataSource local_data_source = 1;
+        GcsDataSource gcs_data_source = 2;
     }
 };
 
 /* Defines a local file */
 message LocalDataSource {
     string filename = 1;
+}
+
+/* Google Cloud Storage blob */
+message GcsDataSource {
+    string bucket_name = 1;
+    string blob_name = 2;
+    string project_name = 3;
+    string credentials_file = 4;
 }
