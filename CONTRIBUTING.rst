@@ -112,6 +112,7 @@ Minor & Minor Changes
 ~~~~~~~~~~~~~~~~~~~~~
 
 1. Create a release branch and publish it::
+
     $ git flow release start <version>
     $ git flow publish <version>
 
@@ -120,16 +121,19 @@ Minor & Minor Changes
     $ git commit -m "bug fix message"
 
 3. Start a release candidate and push to build::
+
     $ bumpversion [major|minor] --tag
     $ git push
     $ git push --tags
 
 4. If another release candidate is needed::
+
     $ bumpversion candidate --tag
     $ git push
     $ git push --tags
 
 5. When ready for PyPi bump the release, merge, and push::
+
     $ bumpversion release
     $ git push
     $ git flow release finish <version>
@@ -140,15 +144,18 @@ Hotfix
 ~~~~~~
 
 1. Start the hotfix::
+
     $ git flow hotfix start <version>
 
 2. Makes changes and bump the version::
+
     $ git add .
     $ git commit -m "hotfix message"
     $ bumpversion patch --no-commit
     $ bumpversion release --allow-dirty
 
 3. Finish the hotfix::
+
     $ git flow hotfix finish <version>
     $ git push
     $ git push --tags

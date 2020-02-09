@@ -1,11 +1,11 @@
-import threading
 import tempfile
 from contextlib import contextmanager
-from typing import Optional, Dict
+from typing import Optional
 
 from google.cloud import storage
 
 from needlestack.data_sources import DataSource
+from needlestack.utilities.multiton import multiton_pattern
 
 
 class GcsDataSource(DataSource):
@@ -55,10 +55,6 @@ class GcsDataSource(DataSource):
         yield self.blob.download_as_string()
 
 
-CLIENTS: Dict[Optional[str], storage.Client] = {}
-LOCK = threading.Lock()
-
-
 def create_client(credentials_file: Optional[str] = None) -> storage.Client:
     if credentials_file:
         return storage.Client.from_service_account_json(credentials_file)
@@ -66,11 +62,4 @@ def create_client(credentials_file: Optional[str] = None) -> storage.Client:
         return storage.Client()
 
 
-def get_client(credentials_file: Optional[str] = None) -> storage.Client:
-    if credentials_file in CLIENTS:
-        return CLIENTS[credentials_file]
-    else:
-        client = create_client(credentials_file)
-        with LOCK:
-            CLIENTS[credentials_file] = client
-        return client
+get_client = multiton_pattern(create_client)

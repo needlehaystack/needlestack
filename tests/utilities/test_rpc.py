@@ -3,11 +3,11 @@ from unittest.mock import MagicMock
 import pytest
 from google.protobuf.message import Message
 
-from needlestack.servicers import decorators
+from needlestack.utilities import rpc
 
 
 def test_unhandled_exception_rpc():
-    @decorators.unhandled_exception_rpc(Message)
+    @rpc.unhandled_exception_rpc(Message)
     def do_nothing(self, request, context):
         return Message()
 
@@ -17,7 +17,7 @@ def test_unhandled_exception_rpc():
 def test_unhandled_exception_rpc_exception():
     expection_text = "some exception thrown"
 
-    @decorators.unhandled_exception_rpc(Message)
+    @rpc.unhandled_exception_rpc(Message)
     def raise_exception(self, request, context):
         raise Exception(expection_text)
 
