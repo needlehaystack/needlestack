@@ -17,7 +17,7 @@ setuptools.setup(
     tests_require=["pytest", "pytest-cov"],
     setup_requires=["pytest-runner"],
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
