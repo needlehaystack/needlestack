@@ -13,11 +13,11 @@ setuptools.setup(
     license="Apache License 2.0",
     packages=setuptools.find_packages(),
     install_requires=["grpcio>=1.18.0", "numpy>=1.15.2", "protobuf>=3.6.1", "kazoo>=2.6.1"],
-    extras_require={"faiss": ["faiss==1.5.3"]},
+    extras_require={"faiss": ["faiss==1.5.3"], "gcs": ["google-cloud-storage==1.25.0"]},
     tests_require=["pytest", "pytest-cov"],
     setup_requires=["pytest-runner"],
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',

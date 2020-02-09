@@ -99,6 +99,7 @@ def calculate_add(
     add_collections: List[collections_pb2.Collection],
     algorithm: Algorithm,
 ) -> List[collections_pb2.Collection]:
+    """Determine how to add a set of collections to an existing set of collections."""
     current_collections = deepcopy(current_collections)
     add_collections = deepcopy(add_collections)
 

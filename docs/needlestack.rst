@@ -13,6 +13,7 @@ Subpackages
    needlestack.data_sources
    needlestack.indices
    needlestack.servicers
+   needlestack.utilities
 
 Submodules
 ----------

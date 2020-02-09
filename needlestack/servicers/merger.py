@@ -13,7 +13,7 @@ from needlestack.balancers import calculate_add
 from needlestack.balancers.greedy import GreedyAlgorithm
 from needlestack.cluster_managers import ClusterManager
 from needlestack.servicers.settings import BaseConfig
-from needlestack.servicers.decorators import unhandled_exception_rpc
+from needlestack.utilities.rpc import unhandled_exception_rpc
 
 logger = logging.getLogger("needlestack")
 

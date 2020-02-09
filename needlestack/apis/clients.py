@@ -1,11 +1,11 @@
-import threading
-from typing import Dict, Union, Callable, Optional
+from typing import Optional
 
 import grpc
 from grpc._channel import Channel
 from grpc_health.v1.health_pb2_grpc import HealthStub
 
 from needlestack.apis.servicers_pb2_grpc import MergerStub, SearcherStub
+from needlestack.utilities.multiton import multiton_pattern
 
 
 def create_channel(hostport: str, root_certificate: Optional[str] = None) -> Channel:
@@ -38,32 +38,7 @@ def create_searcher_stub(
     return SearcherStub(channel)
 
 
-def singleton_getter(
-    create_fn: Callable[
-        [str, Optional[str]], Union[Channel, HealthStub, MergerStub, SearcherStub]
-    ]
-) -> Callable[
-    [str, Optional[str]], Union[Channel, HealthStub, MergerStub, SearcherStub]
-]:
-    lock = threading.Lock()
-    cache: Dict[str, Union[Channel, HealthStub, MergerStub, SearcherStub]] = {}
-
-    def getter(
-        hostport: str, root_certificate: Optional[str] = None
-    ) -> Union[Channel, HealthStub, MergerStub, SearcherStub]:
-        key = f"{hostport}|{root_certificate}"
-        if key in cache:
-            return cache[key]
-        else:
-            obj = create_fn(hostport, root_certificate)
-            with lock:
-                cache[key] = obj
-            return obj
-
-    return getter
-
-
-get_channel = singleton_getter(create_channel)
-get_health_stub = singleton_getter(create_health_stub)
-get_merger_stub = singleton_getter(create_merger_stub)
-get_searcher_stub = singleton_getter(create_searcher_stub)
+get_channel = multiton_pattern(create_channel)
+get_health_stub = multiton_pattern(create_health_stub)
+get_merger_stub = multiton_pattern(create_merger_stub)
+get_searcher_stub = multiton_pattern(create_searcher_stub)

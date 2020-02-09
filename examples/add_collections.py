@@ -20,6 +20,7 @@ def main():
     response = health_stub.Check(health_pb2.HealthCheckRequest(service="Merger"))
     print(response)
 
+    # Grabs the collections protobubs from the files that indexing_job.py wrote to ./data
     collections_files = ["collection_1_data_source.pbtxt", "collection_2_data_source.pbtxt"]
     collections = []
     for file in collections_files:

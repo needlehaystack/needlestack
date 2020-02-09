@@ -4,6 +4,14 @@ needlestack.data\_sources package
 Submodules
 ----------
 
+needlestack.data\_sources.gcs module
+------------------------------------
+
+.. automodule:: needlestack.data_sources.gcs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 needlestack.data\_sources.local module
 --------------------------------------
 

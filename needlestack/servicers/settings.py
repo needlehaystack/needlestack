@@ -108,7 +108,7 @@ class TestDockerConfig(BaseConfig):
     LOG_FILE_BACKUPS = 2
 
     MAX_WORKERS = 4
-    HOSTNAME = socket.gethostname()
+    HOSTNAME = "localhost"
     SERVICER_PORT = 50051
 
     CLUSTER_NAME = "test_needlestack"

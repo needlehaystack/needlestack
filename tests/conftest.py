@@ -1,8 +1,11 @@
 from pathlib import Path
+from unittest import mock
+from datetime import datetime
 
 import faiss
 import pytest
 import numpy as np
+from google.cloud import storage
 
 from needlestack.apis import collections_pb2
 from needlestack.apis import data_sources_pb2
@@ -88,6 +91,44 @@ def test_servicer_config(ssl_key_path, ssl_cert_path):
         ZOOKEEPER_HOSTS = ["zoo1:2181", "zoo2:2181", "zoo3:2181"]
 
     return TestConfig()
+
+
+@pytest.fixture
+def gcs_blob():
+    def download_to_file(f):
+        f.write(b"")
+
+    def download_as_string():
+        return b""
+
+    blob = mock.Mock(spec=storage.Blob)
+    blob.updated = datetime.now()
+    blob.download_to_file = mock.Mock(side_effect=download_to_file)
+    blob.download_as_string = mock.Mock(side_effect=download_as_string)
+    yield blob
+
+
+@pytest.fixture
+def gcs_bucket(gcs_blob):
+    def get_blob(*args):
+        return gcs_blob
+
+    bucket = mock.Mock(spec=storage.Bucket)
+    bucket.get_blob = mock.Mock(side_effect=get_blob)
+    yield bucket
+
+
+@pytest.fixture
+def gcs_storage_client(monkeypatch, gcs_bucket):
+    def get_bucket(*args):
+        return gcs_bucket
+
+    client = mock.Mock(spec=storage.Client)
+    client.get_bucket = mock.Mock(side_effect=get_bucket)
+    client_cls = mock.Mock(return_value=client)
+    client_cls.from_service_account_json = mock.Mock(side_effect=get_bucket)
+    monkeypatch.setattr(storage, "Client", client_cls)
+    yield client
 
 
 def gen_random_vectors_and_metadatas(dimension, size, dtype, id_prefix="id", seed=42):
