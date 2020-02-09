@@ -4,14 +4,6 @@ needlestack.servicers package
 Submodules
 ----------
 
-needlestack.servicers.decorators module
----------------------------------------
-
-.. automodule:: needlestack.servicers.decorators
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 needlestack.servicers.factory module
 ------------------------------------
 
