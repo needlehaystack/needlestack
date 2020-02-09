@@ -43,7 +43,7 @@ _status_code = protoc.main(
 project = 'Needlestack'
 copyright = '2019, Cung Tran'
 author = 'Cung Tran'
-version = "0.0.7"
+version = "0.1.0-rc0"
 release = version
 
 
