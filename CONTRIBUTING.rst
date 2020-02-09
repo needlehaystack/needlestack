@@ -89,6 +89,7 @@ with Docker and Docker-Compose
     $ git flow feature publish NAME_OF_FEATURE
 
 11. Submit a pull request through the GitHub website.
+    The base should be ``needlehaystack/needlestack`` and ``develop``.
 
 
 4. Submit Pull Request
@@ -105,12 +106,49 @@ Follow these guidelines when submitting pull requests.
 5. Deploying
 ------------
 
-A note for maintainers deploying to PyPi. Bump the package version and tag
-the commit. Pushing new tags to GitHub will kick off a Travis CI pipeline to test
-and deploy the package to PyPi.
+A note for maintainers deploying to PyPi.
 
-.. code-block:: shell
+Minor & Minor Changes
+~~~~~~~~~~~~~~~~~~~~~
 
-    $ bumpversion patch # major||minor||patch
+1. Create a release branch and publish it::
+    $ git flow release start <version>
+    $ git flow publish <version>
+
+2. Fix bugs, if any::
+    $ git add .
+    $ git commit -m "bug fix message"
+
+3. Start a release candidate and push to build::
+    $ bumpversion [major|minor] --tag
+    $ git push
+    $ git push --tags
+
+4. If another release candidate is needed::
+    $ bumpversion candidate --tag
+    $ git push
+    $ git push --tags
+
+5. When ready for PyPi bump the release, merge, and push::
+    $ bumpversion release
+    $ git push
+    $ git flow release finish <version>
+    $ git push
+    $ git push --tags
+
+Hotfix
+~~~~~~
+
+1. Start the hotfix::
+    $ git flow hotfix start <version>
+
+2. Makes changes and bump the version::
+    $ git add .
+    $ git commit -m "hotfix message"
+    $ bumpversion patch --no-commit
+    $ bumpversion release --allow-dirty
+
+3. Finish the hotfix::
+    $ git flow hotfix finish <version>
     $ git push
     $ git push --tags
