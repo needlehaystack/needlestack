@@ -4,14 +4,6 @@ needlestack.apis package
 Submodules
 ----------
 
-needlestack.apis.clients module
--------------------------------
-
-.. automodule:: needlestack.apis.clients
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 needlestack.apis.collections\_pb2 module
 ----------------------------------------
 

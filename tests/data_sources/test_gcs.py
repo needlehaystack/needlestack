@@ -4,13 +4,14 @@ from needlestack.data_sources import gcs
 
 
 def test_create_client(gcs_storage_client):
-    assert gcs.create_client() is not None
-    assert gcs.create_client("credentials.json") is not None
+    assert gcs.get_client("credentials.json") is not None
 
 
 def test_get_client(gcs_storage_client):
     client_1 = gcs.get_client()
     client_2 = gcs.get_client()
+    assert client_1 is not None
+    assert client_2 is not None
     assert client_1 == client_2
 
 

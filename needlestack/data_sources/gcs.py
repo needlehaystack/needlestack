@@ -1,11 +1,11 @@
 import tempfile
 from contextlib import contextmanager
 from typing import Optional
+from functools import lru_cache
 
 from google.cloud import storage
 
 from needlestack.data_sources import DataSource
-from needlestack.utilities.multiton import multiton_pattern
 
 
 class GcsDataSource(DataSource):
@@ -55,11 +55,16 @@ class GcsDataSource(DataSource):
         yield self.blob.download_as_string()
 
 
-def create_client(credentials_file: Optional[str] = None) -> storage.Client:
+@lru_cache(maxsize=None)
+def get_client(credentials_file: Optional[str] = None) -> storage.Client:
+    """Gets a cached GCS client, or creates and caches a GCS client.
+    If not provided a credentials file, checks the environment variables
+    for client authentication.
+
+    Args:
+        credentials_file: Path to GCP credentials json
+    """
     if credentials_file:
         return storage.Client.from_service_account_json(credentials_file)
     else:
         return storage.Client()
-
-
-get_client = multiton_pattern(create_client)

@@ -119,11 +119,11 @@ Check that a node is up with the following requests.
 
 .. code-block:: python
 
-    from grpc_health.v1 import health_pb2
-    from needlestack.apis import clients
+    import grpc
+    from grpc_health.v1 import health_pb2, health_pb2_grpc
 
-    hostname = "localhost:50051"
-    stub = clients.get_health_stub(hostname)
+    channel = grpc.insecure_channel("localhost:50051")
+    stub = health_pb2_grpc.HealthStub(channel)
     stub.Check(health_pb2.HealthCheckRequest(service="Merger"))
     stub.Check(health_pb2.HealthCheckRequest(service="Searcher"))
 
@@ -141,15 +141,15 @@ Adding Collections
 
 .. code-block:: python
 
-    from needlestack.apis import clients
-    from needlestack.apis import collections_pb2
+    import grpc
+    from needlestack.apis import collections_pb2, servicers_pb2_grpc
 
     # Create a list of collections_pb2.Collection objects
     # that specifies collections, shards, and their data sources
     # collections = [...]
 
-    hostname = "localhost:50051"
-    stub = clients.get_merger_stub(hostname)
+    channel = grpc.insecure_channel("localhost:50051")
+    stub = servicers_pb2_grpc.MergerStub(channel)
     request = collections_pb2.CollectionsAddRequest(collections=collections)
     response = stub.CollectionConfiguration(request)
 
@@ -184,10 +184,10 @@ all shards.
 .. code-block:: python
 
     from needlestack.apis import serializers
-    from needlestack.apis import clients
+    from needlestack.apis import servicers_pb2, servicers_pb2_grpc
 
-    hostname = "localhost:50051"
-    stub = clients.get_merger_stub(hostname)
+    channel = grpc.insecure_channel("localhost:50051")
+    stub = servicers_pb2_grpc.MergerStub(channel)
     # X = some vector as a numpy array
     # k = number of k neighbors
     vector = serializers.ndarray_to_proto(X)

@@ -22,10 +22,13 @@ compile-proto-test:
 		./needlestack/apis/*.proto
 
 gen-ssl-certs:
-	mkdir -p data
-	openssl req -new -newkey rsa:4096 -days 1000 -nodes -x509 \
-	    -subj "/C=US/ST=NY/L=New York/O=Needlehaystack/CN=merger-grpc" \
-	    -keyout data/key.pem -out data/cert.pem
+	mkdir -p data/credentials
+	cd data/credentials && \
+		openssl req -x509 -sha256 -newkey rsa:4096 -keyout ca.key -out ca.crt -days 356 -nodes -subj '/CN=My Cert Authority' && \
+		openssl req -new -newkey rsa:4096 -keyout server.key -out server.csr -nodes -subj '/CN=needlestack' -config ../../examples/openssl.conf && \
+		openssl x509 -req -sha256 -days 365 -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt -extensions v3_req -extfile ../../examples/openssl.conf && \
+		openssl req -new -newkey rsa:4096 -keyout client.key -out client.csr -nodes -subj '/CN=My Client' && \
+		openssl x509 -req -sha256 -days 365 -in client.csr -CA ca.crt -CAkey ca.key -set_serial 02 -out client.crt
 
 clean: clean-build clean-pyc clean-test clean-proto
 
@@ -45,6 +48,7 @@ clean-pyc:
 clean-test:
 	rm -f .coverage
 	rm -fr htmlcov/
+	rm -f my.log
 
 clean-proto:
 	find . -name '*_pb2.py' -delete

@@ -23,7 +23,7 @@ def create_server(config: BaseConfig) -> _Server:
     """
     configure_logger(config)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.MAX_WORKERS))
-    if config.use_ssl:
+    if config.use_server_ssl:
         server.add_secure_port(
             f"[::]:{config.SERVICER_PORT}", config.ssl_server_credentials
         )
