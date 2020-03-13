@@ -5,7 +5,6 @@ from typing import List, Tuple, Dict
 
 import grpc
 
-from needlestack.apis import clients
 from needlestack.apis import collections_pb2
 from needlestack.apis import servicers_pb2
 from needlestack.apis import servicers_pb2_grpc
@@ -20,12 +19,14 @@ logger = logging.getLogger("needlestack")
 
 class MergerServicer(servicers_pb2_grpc.MergerServicer):
     """A gRPC servicer to accept external requests, use searcher nodes, and
-    merge results together."""
+    merge results together.
+    """
 
     def __init__(self, config: BaseConfig, cluster_manager: ClusterManager):
         self.config = config
         self.cluster_manager = cluster_manager
         self.cluster_manager.register_merger()
+        self.ssl_channel_credentials = self.config.ssl_channel_credentials
 
     @unhandled_exception_rpc(servicers_pb2.SearchResponse)
     def Search(self, request, context):
@@ -36,9 +37,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         futures = []
         for hostport, shard_names in hostports_shards:
-            stub = clients.get_searcher_stub(
-                hostport, self.config.SERVICER_SSL_CERT_CHAIN_FILE
-            )
+            stub = self.get_searcher_stub(hostport)
             subrequest = servicers_pb2.SearchRequest(
                 vector=request.vector,
                 count=request.count,
@@ -75,9 +74,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
 
         futures = []
         for hostport, shard_names in hostports_shards:
-            stub = clients.get_searcher_stub(
-                hostport, self.config.SERVICER_SSL_CERT_CHAIN_FILE
-            )
+            stub = self.get_searcher_stub(hostport)
             subrequest = servicers_pb2.RetrieveRequest(
                 id=request.id,
                 collection_name=request.collection_name,
@@ -164,9 +161,7 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
         futures = []
         nodes = self.cluster_manager.list_nodes()
         for node in nodes:
-            stub = clients.get_searcher_stub(
-                node.hostport, self.config.SERVICER_SSL_CERT_CHAIN_FILE
-            )
+            stub = self.get_searcher_stub(node.hostport)
             subrequest = collections_pb2.CollectionsLoadRequest()
             future = stub.CollectionsLoad.future(subrequest)
             futures.append((node.hostport, future))
@@ -198,3 +193,11 @@ class MergerServicer(servicers_pb2_grpc.MergerServicer):
             host_to_shards[hostport].append(shard_name)
 
         return list(host_to_shards.items())
+
+    def get_searcher_stub(self, hostport: str) -> servicers_pb2_grpc.SearcherStub:
+        if self.config.use_channel_ssl:
+            channel = grpc.secure_channel(hostport, self.ssl_channel_credentials)
+        else:
+            channel = grpc.insecure_channel(hostport)
+
+        return servicers_pb2_grpc.SearcherStub(channel)

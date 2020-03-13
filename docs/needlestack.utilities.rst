@@ -4,14 +4,6 @@ needlestack.utilities package
 Submodules
 ----------
 
-needlestack.utilities.multiton module
--------------------------------------
-
-.. automodule:: needlestack.utilities.multiton
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 needlestack.utilities.rpc module
 --------------------------------
 

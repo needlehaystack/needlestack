@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="needlestack",
-    version="0.0.7",
+    version="0.1.0",
     url="https://github.com/needlehaystack/needlestack",
     author="Cung Tran",
     author_email="minishcung@gmail.com",

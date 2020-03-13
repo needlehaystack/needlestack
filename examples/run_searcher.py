@@ -6,13 +6,14 @@ from grpc_health.v1.health import HealthServicer
 from needlestack.apis import servicers_pb2_grpc
 from needlestack.servicers import factory
 from needlestack.servicers.searcher import SearcherServicer
-from needlestack.servicers.settings import LocalDockerConfig
+
+from examples import configs
 
 logging.getLogger("kazoo").setLevel("WARN")
 
 
 def main():
-    config = LocalDockerConfig()
+    config = configs.LocalDockerConfig()
 
     server = factory.create_server(config)
     manager = factory.create_zookeeper_cluster_manager(config)

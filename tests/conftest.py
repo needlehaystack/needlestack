@@ -11,21 +11,36 @@ from needlestack.apis import collections_pb2
 from needlestack.apis import data_sources_pb2
 from needlestack.apis import indices_pb2
 from needlestack.apis import serializers
+from needlestack.apis import indexing
 from needlestack.collections.collection import Collection
 from needlestack.collections.shard import Shard
 from needlestack.indices import BaseIndex
-from needlestack.indices.faiss_indices import FaissIndex
 from needlestack.servicers.settings import BaseConfig
 
 
 @pytest.fixture
-def ssl_key_path(tmpdir):
-    return Path("tests/credentials/key.pem")
+def ca_certificate(tmpdir):
+    return Path("tests/credentials/ca.crt")
 
 
 @pytest.fixture
-def ssl_cert_path(tmpdir):
-    return Path("tests/credentials/cert.pem")
+def server_private_key(tmpdir):
+    return Path("tests/credentials/server.key")
+
+
+@pytest.fixture
+def server_certificate(tmpdir):
+    return Path("tests/credentials/server.crt")
+
+
+@pytest.fixture
+def channel_private_key(tmpdir):
+    return Path("tests/credentials/client.key")
+
+
+@pytest.fixture
+def channel_certificate(tmpdir):
+    return Path("tests/credentials/client.crt")
 
 
 @pytest.fixture
@@ -77,7 +92,13 @@ def collection_2shards_2d(tmpdir):
 
 
 @pytest.fixture
-def test_servicer_config(ssl_key_path, ssl_cert_path):
+def test_servicer_tls_config(
+    ca_certificate,
+    server_private_key,
+    server_certificate,
+    channel_private_key,
+    channel_certificate,
+):
     class TestConfig(BaseConfig):
         LOG_FILE = "/tmp/needlestack.log"
         LOG_FILE_MAX_BYTES = 1024
@@ -85,8 +106,12 @@ def test_servicer_config(ssl_key_path, ssl_cert_path):
         MAX_WORKERS = 1
         HOSTNAME = "localhost"
         SERVICER_PORT = 50051
-        SERVICER_SSL_PRIVATE_KEY_FILE = ssl_key_path
-        SERVICER_SSL_CERT_CHAIN_FILE = ssl_cert_path
+        MUTUAL_TLS = True
+        SSL_CA_CERT_CHAIN_FILE = ca_certificate
+        SSL_SERVER_PRIVATE_KEY_FILE = server_private_key
+        SSL_SERVER_CERT_CHAIN_FILE = server_certificate
+        SSL_CLIENT_PRIVATE_KEY_FILE = channel_private_key
+        SSL_CLIENT_CERT_CHAIN_FILE = channel_certificate
         CLUSTER_NAME = "test_needlestack"
         ZOOKEEPER_HOSTS = ["zoo1:2181", "zoo2:2181", "zoo3:2181"]
 
@@ -150,8 +175,7 @@ def gen_faiss_index_proto(tmpdir, X, metadatas, name="test_index"):
     index = faiss.IndexFlatL2(X.shape[1])
     index.add(X)
 
-    faiss_index = FaissIndex()
-    faiss_index.populate({"index": index, "metadatas": metadatas})
+    faiss_index = indexing.create_faiss_index_shard(index, metadatas)
     proto = faiss_index.serialize()
 
     filename = str(tmpdir.join(f"{name}.pb"))
