@@ -21,6 +21,15 @@ compile-proto-test:
 		--grpc_python_out=. \
 		./needlestack/apis/*.proto
 
+gen-ssl-certs:
+	mkdir -p data/credentials
+	cd data/credentials && \
+		openssl req -x509 -sha256 -newkey rsa:4096 -keyout ca.key -out ca.crt -days 356 -nodes -subj '/CN=My Cert Authority' && \
+		openssl req -new -newkey rsa:4096 -keyout server.key -out server.csr -nodes -subj '/CN=needlestack' -config ../../examples/openssl.conf && \
+		openssl x509 -req -sha256 -days 365 -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt -extensions v3_req -extfile ../../examples/openssl.conf && \
+		openssl req -new -newkey rsa:4096 -keyout client.key -out client.csr -nodes -subj '/CN=My Client' && \
+		openssl x509 -req -sha256 -days 365 -in client.csr -CA ca.crt -CAkey ca.key -set_serial 02 -out client.crt
+
 clean: clean-build clean-pyc clean-test clean-proto
 
 clean-build:
@@ -39,17 +48,17 @@ clean-pyc:
 clean-test:
 	rm -f .coverage
 	rm -fr htmlcov/
+	rm -f my.log
 
 clean-proto:
 	find . -name '*_pb2.py' -delete
 	find . -name '*_pb2.pyi' -delete
-	find . -name '*_pb2_grpc.py'  -delete
+	find . -name '*_pb2_grpc.py' -delete
 
-test-all: compile-proto-test auto-format test lint test-typing
+test-all: compile-proto-test auto-format lint test test-typing
 
 auto-format:
-	black --target-version py36 --exclude ".*_pb2(_grpc)?\.py" needlestack
-	black --target-version py36 --exclude ".*_pb2(_grpc)?\.py" tests
+	black needlestack tests
 
 test:
 	pytest

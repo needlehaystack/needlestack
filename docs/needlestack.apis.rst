@@ -4,14 +4,6 @@ needlestack.apis package
 Submodules
 ----------
 
-needlestack.apis.clients module
--------------------------------
-
-.. automodule:: needlestack.apis.clients
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 needlestack.apis.collections\_pb2 module
 ----------------------------------------
 
@@ -44,34 +36,26 @@ needlestack.apis.data\_sources\_pb2\_grpc module
    :undoc-members:
    :show-inheritance:
 
-needlestack.apis.health\_pb2 module
------------------------------------
+needlestack.apis.indexing module
+--------------------------------
 
-.. automodule:: needlestack.apis.health_pb2
+.. automodule:: needlestack.apis.indexing
    :members:
    :undoc-members:
    :show-inheritance:
 
-needlestack.apis.health\_pb2\_grpc module
------------------------------------------
+needlestack.apis.indices\_pb2 module
+------------------------------------
 
-.. automodule:: needlestack.apis.health_pb2_grpc
+.. automodule:: needlestack.apis.indices_pb2
    :members:
    :undoc-members:
    :show-inheritance:
 
-needlestack.apis.neighbors\_pb2 module
---------------------------------------
+needlestack.apis.indices\_pb2\_grpc module
+------------------------------------------
 
-.. automodule:: needlestack.apis.neighbors_pb2
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-needlestack.apis.neighbors\_pb2\_grpc module
---------------------------------------------
-
-.. automodule:: needlestack.apis.neighbors_pb2_grpc
+.. automodule:: needlestack.apis.indices_pb2_grpc
    :members:
    :undoc-members:
    :show-inheritance:

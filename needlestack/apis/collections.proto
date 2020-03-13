@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "needlestack/apis/neighbors.proto";
+import "needlestack/apis/indices.proto";
 
 
 /********************
@@ -10,31 +10,42 @@ import "needlestack/apis/neighbors.proto";
  ********************/
 
 /* List collections loaded on cluster */
-message CollectionsRequest {
+message CollectionsListRequest {
+    // Names of collecitons to return, otherwise return all collections
     repeated string names = 1;
 };
 
-message CollectionsResponse {
+message CollectionsListResponse {
     repeated Collection collections = 1;
 };
 
 /********************
  *
- * Configure Requests
+ * Add/Delete Requests
  * 
  ********************/
 
-
-/* Request to configure the provided collections */
-message CollectionConfigurationRequest {
+message CollectionsAddRequest {
     repeated Collection collections = 1;
+    bool noop = 2;
+    string balance_algorithm = 3;
+};
+
+message CollectionsAddResponse {
+    repeated Collection collections = 1;
+    bool success = 2;
+};
+
+message CollectionsDeleteRequest {
+    repeated string names = 1;
     bool noop = 2;
 };
 
-/* Response of how collections are configured */
-message CollectionConfigurationResponse {
-    repeated Collection collections = 1;
+message CollectionsDeleteResponse {
+    repeated string names = 1;
+    bool success = 2;
 };
+
 
 /********************
  *
@@ -43,10 +54,11 @@ message CollectionConfigurationResponse {
  ********************/
 
 /* Load collections on a Searcher node */
-message CollectionLoadRequest {
+message CollectionsLoadRequest {
 };
 
-message CollectionLoadResponse {
+message CollectionsLoadResponse {
+    bool success = 1;
 };
 
 /********************
@@ -65,32 +77,41 @@ message Collection {
 
 /* A shard from a collection */
 message Shard {
-    // Name used to identify shard
-    string name = 1;
+
+    string collection_name = 1;
+    string name = 2;
 
     // Optional shard weight used to help distribute shards evenly among searcher
-    float weight = 2;
+    float weight = 3;
 
     // Optional list of nodes the shard exists on
-    repeated Node replicas = 3;
+    repeated Replica replicas = 4;
 
     // A source of the type of index to load
-    SpatialIndex index = 4;
+    BaseIndex index = 5;
 };
 
 /* A Searcher node that host shard replicas */
-message Node {
+message Replica {
 
     enum State {
-        ACTIVE = 0;
-        DOWN = 1;
-        BOOTING = 2;
-        RECOVERING = 3;
+        UNKNOWN = 0;
+        ACTIVE = 1;
+        DOWN = 2;
+        BOOTING = 3;
+        RECOVERING = 4;
     };
 
+    string collection_name = 1;
+    string shard_name = 2;
+    Node node = 3;
+    State state = 4;
+    bool leader = 5;
+};
+
+message Node {
     string hostport = 1;
-    State state = 2;
-    string ip_address = 3;
-    string hostname = 4;
-    int32 port = 5;
-}
+    string ip_address = 2;
+    string hostname = 3;
+    int32 port = 4;
+};

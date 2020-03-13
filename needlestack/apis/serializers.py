@@ -4,7 +4,8 @@ from typing import Any, Tuple, Optional, List, Union
 import numpy as np
 
 from needlestack.apis import tensors_pb2
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
+from needlestack.exceptions import SerializationError, DeserializationError
 
 
 TYPE_TO_ENUM = {
@@ -34,28 +35,28 @@ def ndarray_to_proto(
 
     if isinstance(X, list):
         if dtype is None:
-            raise ValueError("Serializing list needs dtype")
+            raise SerializationError("Serializing list needs dtype")
         if shape is None:
-            raise ValueError("Serializing list needs shape")
+            raise SerializationError("Serializing list needs shape")
         X = np.array(X, dtype=dtype)
         if X.shape != shape:
-            raise ValueError("Shape mismatch")
+            raise SerializationError("Shape mismatch")
 
     if isinstance(X, np.ndarray):
         if dtype and X.dtype.name != dtype:
             if dtype in TYPE_TO_ENUM:
                 X = X.astype(dtype)
             else:
-                raise ValueError(f"{dtype} dtype not supported")
+                raise SerializationError(f"{dtype} dtype not supported")
         dtype_enum = TYPE_TO_ENUM.get(X.dtype.name)
         if dtype_enum is None:
-            raise ValueError(f"{X.dtype.name} dtype not yet supported")
+            raise SerializationError(f"{X.dtype.name} dtype not yet supported")
         proto.dtype = dtype_enum
         proto.shape.extend(X.shape)
         proto.numpy_content = X.tobytes()
         return proto
     else:
-        raise ValueError("Unsupported NDArray")
+        raise SerializationError("Unsupported NDArray")
 
 
 def proto_to_ndarray(proto: tensors_pb2.NDArray) -> np.ndarray:
@@ -67,7 +68,7 @@ def proto_to_ndarray(proto: tensors_pb2.NDArray) -> np.ndarray:
     dtype = ENUM_TO_TYPE.get(proto.dtype)
 
     if not proto.shape:
-        raise ValueError("Missing attribute shape to convert to ndarray")
+        raise DeserializationError("Missing attribute shape to convert to ndarray")
 
     if proto.numpy_content and dtype:
         return np.frombuffer(proto.numpy_content, dtype=dtype).reshape(*proto.shape)
@@ -84,7 +85,7 @@ def proto_to_ndarray(proto: tensors_pb2.NDArray) -> np.ndarray:
         dtype = dtype or "int64"
         return np.array(proto.long_val, dtype=dtype).reshape(*proto.shape)
     else:
-        raise ValueError("Missing value attribute to convert to ndarray")
+        raise DeserializationError("Missing value attribute to convert to ndarray")
 
 
 def metadata_list_to_proto(
@@ -92,7 +93,7 @@ def metadata_list_to_proto(
     fields_list: List[Tuple],
     fieldtypes: Optional[Tuple[str]] = None,
     fieldnames: Optional[Tuple[str]] = None,
-) -> List[neighbors_pb2.Metadata]:
+) -> List[indices_pb2.Metadata]:
     """Serialize a set of items with metadata fields
 
     Args:
@@ -112,8 +113,9 @@ def metadata_to_proto(
     fields: Tuple,
     fieldtypes: Optional[Tuple[str]] = None,
     fieldnames: Optional[Tuple[str]] = None,
-) -> neighbors_pb2.Metadata:
-    """Serialize a set of metadata fields for some item
+) -> indices_pb2.Metadata:
+    """Serialize a set of metadata fields for some item.
+    Skips over None fields
 
     Args:
         id: ID for item
@@ -126,8 +128,9 @@ def metadata_to_proto(
     metadata_fields = [
         metadata_field_to_proto(field, fieldtype, fieldname)
         for field, fieldtype, fieldname in zip(fields, _fieldtypes, _fieldnames)
+        if field is not None
     ]
-    return neighbors_pb2.Metadata(id=id, fields=metadata_fields)
+    return indices_pb2.Metadata(id=id, fields=metadata_fields)
 
 
 TYPE_TO_FIELD_TYPE = {str: "string", float: "double", int: "long", bool: "bool"}
@@ -137,7 +140,7 @@ def metadata_field_to_proto(
     field: Union[str, int, float, bool],
     fieldtype: Optional[str] = None,
     fieldname: Optional[str] = None,
-) -> neighbors_pb2.MetadataField:
+) -> indices_pb2.MetadataField:
     """Serialize some python value to a metadata field proto
 
     Args:
@@ -145,11 +148,11 @@ def metadata_field_to_proto(
         fieldtype: Explicit type to serialize the field
         fieldname: Optional name for this metadata field
     """
-    proto = neighbors_pb2.MetadataField(name=fieldname)
+    proto = indices_pb2.MetadataField(name=fieldname)
 
     fieldtype = fieldtype if fieldtype else TYPE_TO_FIELD_TYPE.get(type(field))
     if fieldtype is None:
-        raise ValueError(f"Fieldtype {type(field)} not serializable.")
+        raise SerializationError(f"Fieldtype {type(field)} not serializable.")
 
     if fieldtype == "string" and isinstance(field, str):
         proto.string_val = field
@@ -164,7 +167,7 @@ def metadata_field_to_proto(
     elif fieldtype == "bool" and isinstance(field, bool):
         proto.bool_val = field
     else:
-        raise ValueError(
+        raise SerializationError(
             f"Fieldtype {fieldtype} and primative {type(field)} not serializable."
         )
 

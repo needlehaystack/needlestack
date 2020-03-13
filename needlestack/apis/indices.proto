@@ -1,29 +1,30 @@
 syntax = "proto3";
 
+import "needlestack/apis/tensors.proto";
 import "needlestack/apis/data_sources.proto";
 
 
 /* Encapsulates all index types */
-message SpatialIndex {
+message BaseIndex {
     oneof index {
         FaissIndex faiss_index = 1;
     }
-}
+};
 
-/* Information to load a Faiss index */
+/* Representation of Faiss index and it's data source */
 message FaissIndex {
     bytes index_binary = 1;
     repeated Metadata metadatas = 2;
     DataSource data_source = 3;
 };
 
-/* Metadata for one particular vector*/
+/* Metadata for one particular vector */
 message Metadata {
     string id = 1;
     repeated MetadataField fields = 2;
 };
 
-/* One field for metadata */
+/* One field of metadata */
 message MetadataField {
     string name = 1;
     oneof value {
@@ -34,4 +35,19 @@ message MetadataField {
         int32 int_val = 6;
         bool bool_val = 7;
     }
+};
+
+/* Search result from kNN query */
+message SearchResultItem {
+    oneof distance {
+        float float_distance = 1;
+        double double_distance = 2;
+    }
+    Metadata metadata = 3;
+};
+
+/* Retrieval result from get query */
+message RetrievalResultItem {
+    NDArray vector = 1;
+    Metadata metadata = 2;
 };

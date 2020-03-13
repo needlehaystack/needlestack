@@ -4,14 +4,15 @@ from typing import List, Dict
 import faiss
 import numpy as np
 
-from needlestack.apis import neighbors_pb2
+from needlestack.apis import indices_pb2
 from needlestack.data_sources import DataSource
-from needlestack.neighbors import SpatialIndex
+from needlestack.indices import BaseIndex
+from needlestack.exceptions import UnsupportedIndexOperationException
 
 
-class FaissIndex(SpatialIndex):
+class FaissIndex(BaseIndex):
 
-    """Implementation of a SpatialIndex using Faiss's index classes
+    """Implementation of a BaseIndex using Faiss's index classes
 
     Attributes:
         index: Faiss index object
@@ -22,7 +23,7 @@ class FaissIndex(SpatialIndex):
     """
 
     index: faiss.Index
-    metadatas: List[neighbors_pb2.Metadata]
+    metadatas: List[indices_pb2.Metadata]
     data_source: DataSource
     id2index: Dict[str, int]
     enable_id_to_vector: bool = False
@@ -35,36 +36,52 @@ class FaissIndex(SpatialIndex):
     def count(self):
         return self.index.ntotal
 
-    def populate_from_proto(self, proto: neighbors_pb2.FaissIndex):
+    def populate_from_proto(self, proto: indices_pb2.FaissIndex):
         self.data_source = DataSource.from_proto(proto.data_source)
 
     def populate(self, data):
         self.index = data.get("index")
         self.metadatas = data.get("metadatas")
+        self.modified_time = data.get("modified_time")
 
     def serialize(self):
         with tempfile.NamedTemporaryFile() as f:
             faiss.write_index(self.index, f.name)
             index_binary = f.read()
 
-        return neighbors_pb2.FaissIndex(
+        return indices_pb2.FaissIndex(
             index_binary=index_binary, metadatas=self.metadatas
         )
 
-    def load(self):
+    def _load(self):
         with self.data_source.get_content() as content:
-            proto = neighbors_pb2.FaissIndex.FromString(content.read())
+            proto = indices_pb2.FaissIndex.FromString(content.read())
 
         with tempfile.NamedTemporaryFile() as f:
             f.write(proto.index_binary)
             f.seek(0)
             proto.ClearField("index_binary")
-            self.index = faiss.read_index(f.name)
-        self.metadatas = proto.metadatas
+            faiss_index = faiss.read_index(f.name)
 
-        self.id_to_vector(self.enable_id_to_vector)
+        self.populate(
+            {
+                "index": faiss_index,
+                "metadatas": proto.metadatas,
+                "modified_time": self.data_source.last_modified,
+            }
+        )
 
-    def id_to_vector(self, enable: bool):
+        self._set_id_to_vector(self.enable_id_to_vector)
+
+    def update_available(self):
+        if self.modified_time is None:
+            return True
+        elif self.modified_time < self.data_source.last_modified:
+            return True
+        else:
+            return False
+
+    def _set_id_to_vector(self, enable: bool):
         if enable:
             self.id2index = {
                 metadata.id: i for i, metadata in enumerate(self.metadatas)
@@ -87,7 +104,9 @@ class FaissIndex(SpatialIndex):
         if self.enable_id_to_vector:
             return self.id2index.get(id)
         else:
-            raise ValueError("Index does not have enable_id_to_vector")
+            raise UnsupportedIndexOperationException(
+                "Index does not have enable_id_to_vector"
+            )
 
     def knn_search(self, X, k):
         """Faiss only supports float32 at version 1.5.0"""

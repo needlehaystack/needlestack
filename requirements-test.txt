@@ -1,7 +1,8 @@
-black==19.3b0
-flake8==3.7.8
-mypy==0.720
-mypy-protobuf==1.12
-pytest==5.0.1
-pytest-cov==2.7.1
-pytest-runner==5.1
+black==19.10b0
+coverage==4.5.4
+flake8==3.7.9
+mypy==0.761
+mypy-protobuf==1.17
+pytest==5.3.5
+pytest-cov==2.8.1
+pytest-runner==5.2

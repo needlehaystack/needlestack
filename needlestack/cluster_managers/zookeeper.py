@@ -1,13 +1,12 @@
-import os
 import logging
 import signal
-import time
 from copy import deepcopy
-from typing import List
+from typing import List, Optional
 
-from kazoo.exceptions import NodeExistsError
+import kazoo
 from kazoo.client import KazooClient, KazooState
 from kazoo.recipe.cache import TreeCache
+from kazoo.retry import KazooRetry
 
 from needlestack.apis import collections_pb2
 from needlestack.cluster_managers import ClusterManager
@@ -46,29 +45,24 @@ class ZookeeperClusterManager(ClusterManager):
                         ...
     """
 
-    ACTIVE = b"ACTIVE"
-    DOWN = b"DOWN"
-    BOOTING = b"BOOTING"
-
     cluster_name: str
     hostport: str
     zk: KazooClient
     cache: TreeCache
 
-    def __init__(self, cluster_name: str, hostport: str, hosts: List[str]):
+    def __init__(
+        self, cluster_name: str, hostport: str, hosts: List[str], zookeeper_root: str
+    ):
         self.cluster_name = cluster_name
         self.hostport = hostport
+        self.zookeeper_root = zookeeper_root
         self.zk = KazooClient(hosts=hosts)
-        self.zk.add_listener(self.listener)
-        self.zk.start()
+        self.zk.add_listener(self.zk_listener)
         self.cache = TreeCache(self.zk, self.base_znode)
-        self.cache.start()
-        signal.signal(signal.SIGINT, self.signal_listener)
-        signal.signal(signal.SIGTERM, self.signal_listener)
 
     @property
     def base_znode(self):
-        return f"/needlestack/{self.cluster_name}"
+        return f"{self.zookeeper_root}/{self.cluster_name}"
 
     @property
     def live_nodes_znode(self):
@@ -100,78 +94,199 @@ class ZookeeperClusterManager(ClusterManager):
             znode += "/" + hostport
         return znode
 
-    def up(self):
-        for i in range(3):
-            try:
-                self.zk.create(self.this_node_znode, ephemeral=True, makepath=True)
-                logger.info(f"Created ephemeral ZNode {self.this_node_znode}")
-                return
-            except NodeExistsError:
-                logger.warn(
-                    f"Ephemeral ZNode {self.this_node_znode} already exists, waiting 5 seconds."
-                )
-                time.sleep(5)
-        logger.error(f"Could not created ephemeral ZNode {self.this_node_znode}")
+    def startup(self):
+        self.zk.start()
+        self.cache.start()
+        signal.signal(signal.SIGINT, self.signal_listener)
+        signal.signal(signal.SIGTERM, self.signal_listener)
+        self.zk.ensure_path(self.live_nodes_znode)
+        self.zk.ensure_path(self.collections_znode)
 
-    def active(self):
-        for znode in self.local_replicas():
-            self.zk.set(znode, self.ACTIVE)
-            logger.info(f"Set ZNode {znode} active")
+    def shutdown(self):
+        self.cache.close()
+        self.zk.stop()
+        self.zk.close()
 
-    def down(self):
-        for znode in self.local_replicas():
-            self.zk.set(znode, self.DOWN)
-            logger.info(f"Set ZNode {znode} down")
+    def cleanup(self):
+        logger.info(f"Removing ZNodes via cleanup")
+        transaction = self.zk.transaction()
 
-    def clean(self):
-        logger.info(f"Removing ZNodes via clean")
-        for znode in self.local_replicas():
-            self.zk.delete(znode)
-            logger.info(f"Removed ZNode {znode}")
-
-    def register_collections(self, collections: List[collections_pb2.Collection]):
-        """Configure a list of collections into Zookeeper
-
-        TODO: Make operations in a transaction.
-        """
-        self.zk.delete(self.collections_znode, recursive=True)
-
-        for collection in collections:
+        for collection in self.list_local_collections():
             for shard in collection.shards:
                 for replica in shard.replicas:
-                    replica_znode = self.replica_znode(
+                    znode = self.replica_znode(
                         collection.name, shard.name, replica.hostport
                     )
-                    self.zk.ensure_path(replica_znode)
-                    self.zk.set(replica_znode, self.BOOTING)
-                    logger.info(f"Created ZNode {replica_znode}")
+                    transaction.delete(znode)
+
+        self.commit_transaction(transaction)
+
+    def register_merger(self):
+        pass
+
+    def register_searcher(self):
+        try:
+            retrier = KazooRetry(max_tries=5, delay=1, backoff=2, max_delay=20)
+            retrier(self.zk.create, self.this_node_znode, ephemeral=True, makepath=True)
+            logger.info(f"Created ephemeral ZNode {self.this_node_znode}")
+        except kazoo.retry.RetryFailedError:
+            logger.error(
+                f"Max retries reached for creating ephemeral ZNode {self.this_node_znode}"
+            )
+        except kazoo.retry.InterruptedError:
+            logger.error(
+                f"Retries interrupted for creating ephemeral ZNode {self.this_node_znode}"
+            )
+
+    def set_state(self, state, collection_name=None, shard_name=None, hostport=None):
+        transaction = self.zk.transaction()
+
+        collections = [collection_name] if collection_name else None
+        for collection in self._list_collections(
+            collections, hostport=hostport, load_replica=True
+        ):
+            logger.info(
+                f"Set {collection.name}/shards ZNodes to {collections_pb2.Replica.State.Name(state)}"
+            )
+            for shard in collection.shards:
+                for replica in shard.replicas:
+                    znode = self.replica_znode(
+                        collection.name, shard.name, replica.node.hostport
+                    )
+                    replica.state = state
+                    transaction.set_data(znode, replica.SerializeToString())
+
+        return self.commit_transaction(transaction)
+
+    def set_local_state(self, state, collection_name=None, shard_name=None):
+        return self.set_state(state, collection_name, shard_name, self.hostport)
+
+    def signal_listener(self, signum, frame):
+        self.shutdown()
+
+    def zk_listener(self, state):
+        if state == KazooState.LOST:
+            logger.warn("Connection to Zookeeper lost")
+        elif state == KazooState.SUSPENDED:
+            logger.warn("Connection to Zookeeper disconnected")
+        else:
+            logger.info("Connection to Zookeeper established")
+
+    def add_collections(self, collections):
+        """Configure a list of collections into Zookeeper
+        """
+        transaction = self.zk.transaction()
 
         for collection in collections:
-            collection_proto = deepcopy(collection)
-            collection_proto.ClearField("shards")
+            collection_copy = deepcopy(collection)
+            collection_copy.ClearField("shards")
             collection_znode = self.collection_znode(collection.name)
-            self.zk.set(collection_znode, collection_proto.SerializeToString())
+            transaction.create(collection_znode, collection_copy.SerializeToString())
+            transaction.create(self.shard_znode(collection.name))
             for shard in collection.shards:
-                shard_proto = deepcopy(shard)
-                shard_proto.ClearField("replicas")
+                shard_copy = deepcopy(shard)
+                shard_copy.ClearField("replicas")
                 shard_znode = self.shard_znode(collection.name, shard.name)
-                self.zk.set(shard_znode, shard_proto.SerializeToString())
+                transaction.create(shard_znode, shard_copy.SerializeToString())
+                transaction.create(self.replica_znode(collection.name, shard.name))
+                for replica in shard.replicas:
+                    replica_copy = deepcopy(replica)
+                    replica_copy.state = collections_pb2.Replica.BOOTING
+                    replica_znode = self.replica_znode(
+                        collection.name, shard.name, replica.node.hostport
+                    )
+                    transaction.create(replica_znode, replica_copy.SerializeToString())
 
-    def get_collections_to_load(self):
-        collections = {}
-        for znode in self.local_replicas():
-            shard_znode = os.path.dirname(os.path.dirname(znode))
-            collection_znode = os.path.dirname(os.path.dirname(shard_znode))
-            shard_node = self.zk.get(shard_znode)
-            collection_node = self.zk.get(collection_znode)
+        if self.commit_transaction(transaction):
+            return collections
+        else:
+            return []
 
-            collection = collections_pb2.Collection.FromString(collection_node[0])
-            shard = collections_pb2.Shard.FromString(shard_node[0])
+    def delete_collections(self, collection_names):
+        transaction = self.zk.transaction()
 
-            collections[collection.name] = collections.get(collection.name, collection)
-            collections[collection.name].shards.extend([shard])
+        for collection_name in collection_names:
+            shards_znode = self.shard_znode(collection_name)
+            for shard_name in self.zk.get_children(shards_znode):
+                replicas_znode = self.replica_znode(collection_name, shard_name)
+                for replica_name in self.zk.get_children(replicas_znode):
+                    replica_znode = self.replica_znode(
+                        collection_name, shard_name, replica_name
+                    )
+                    transaction.delete(replica_znode)
+                transaction.delete(replicas_znode)
+                transaction.delete(self.shard_znode(collection_name, shard_name))
+            transaction.delete(shards_znode)
+            transaction.delete(self.collection_znode(collection_name))
 
-        return list(collections.values())
+        if self.commit_transaction(transaction):
+            return collection_names
+        else:
+            return []
+
+    def list_nodes(self):
+        live_nodes = self.zk.get_children(self.live_nodes_znode)
+        nodes = [collections_pb2.Node(hostport=node) for node in live_nodes]
+        return nodes
+
+    def list_collections(self, collection_names=None, include_state=True):
+        return self._list_collections(collection_names, load_replica=include_state)
+
+    def list_local_collections(self, include_state=True):
+        return self._list_collections(
+            hostport=self.hostport, load_replica=include_state
+        )
+
+    def _list_collections(
+        self,
+        collection_names: Optional[List[str]] = None,
+        hostport: Optional[str] = None,
+        load_replica: Optional[bool] = True,
+    ) -> List[collections_pb2.Collection]:
+        collections = []
+
+        collection_names = collection_names or self.zk.get_children(
+            self.collections_znode
+        )
+        for collection_name in collection_names:
+
+            shards = []
+            shards_znode = self.shard_znode(collection_name)
+            for shard_name in self.zk.get_children(shards_znode):
+
+                replicas = []
+                replicas_znode = self.replica_znode(collection_name, shard_name)
+                for replica_hostport in self.zk.get_children(replicas_znode):
+                    if hostport == replica_hostport or hostport is None:
+                        replica_znode = self.replica_znode(
+                            collection_name, shard_name, replica_hostport
+                        )
+                        if load_replica:
+                            replica_data, _ = self.zk.get(replica_znode)
+                            replica_proto = collections_pb2.Replica.FromString(
+                                replica_data
+                            )
+                        else:
+                            replica_proto = collections_pb2.Replica()
+                        replicas.append(replica_proto)
+
+                if replicas:
+                    shard_znode = self.shard_znode(collection_name, shard_name)
+                    shard_data, _ = self.zk.get(shard_znode)
+                    shard_proto = collections_pb2.Shard.FromString(shard_data)
+                    shard_proto.replicas.extend(replicas)
+                    shards.append(shard_proto)
+
+            if shards:
+                collection_znode = self.collection_znode(collection_name)
+                collection_data, _ = self.zk.get(collection_znode)
+                collection_proto = collections_pb2.Collection.FromString(
+                    collection_data
+                )
+                collection_proto.shards.extend(shards)
+                collections.append(collection_proto)
+
+        return collections
 
     def get_searchers(self, collection_name, shard_names=None):
         if not shard_names:
@@ -180,21 +295,24 @@ class ZookeeperClusterManager(ClusterManager):
 
         shard_hostports = []
         for shard_name in shard_names:
-            hostports = self.get_searchers_for_shard_name(
+            hostports = self._get_searchers_for_shard(
                 collection_name, shard_name, active=True
             )
             if hostports:
                 shard_hostports.append((shard_name, hostports))
             else:
-                logger.error(f"{collection_name}/{shard_name} no active host.")
+                logger.error(
+                    f"No active Searcher node for {collection_name}/{shard_name}."
+                )
 
         return shard_hostports
 
-    def get_searchers_for_shard_name(
+    def _get_searchers_for_shard(
         self, collection_name: str, shard_name: str, active: bool = True
-    ):
+    ) -> List[str]:
         replicas_znode = self.replica_znode(collection_name, shard_name)
         hostports = self.cache.get_children(replicas_znode, [])
+
         if active:
             active_hostports = []
             for hostport in hostports:
@@ -202,82 +320,22 @@ class ZookeeperClusterManager(ClusterManager):
                     collection_name, shard_name, hostport
                 )
                 node = self.cache.get_data(replica_znode)
-                if node and node.data == self.ACTIVE:
-                    active_hostports.append(hostport)
+                if node:
+                    replica = collections_pb2.Replica.FromString(node.data)
+                    if replica.state == collections_pb2.Replica.ACTIVE:
+                        active_hostports.append(hostport)
             hostports = active_hostports
+
         return hostports
 
-    def get_live_nodes(self):
-        live_nodes = self.zk.get_children(self.live_nodes_znode)
-        nodes = [collections_pb2.Node(hostport=node) for node in live_nodes]
-        return nodes
-
-    def get_collections(self, collection_names):
-        collections = []
-
-        collection_names = collection_names or self.cache.get_children(
-            self.collections_znode, []
-        )
-        for collection_name in collection_names:
-            collection_znode = self.collection_znode(collection_name)
-            collection_node = self.cache.get_data(collection_znode)
-            collection = collections_pb2.Collection.FromString(collection_node.data)
-
-            shards = []
-            shards_znode = self.shard_znode(collection_name)
-            for shard_name in self.cache.get_children(shards_znode, []):
-                shard_znode = self.shard_znode(collection_name, shard_name)
-                shard_node = self.cache.get_data(shard_znode)
-                shard_proto = collections_pb2.Shard.FromString(shard_node.data)
-
-                replicas_znode = self.replica_znode(collection_name, shard_name)
-                hostports = self.cache.get_children(replicas_znode, [])
-                replicas = [
-                    collections_pb2.Node(hostport=hostport) for hostport in hostports
-                ]
-                shard_proto.replicas.extend(replicas)
-
-                shards.append(shard_proto)
-
-            collection.shards.extend(shards)
-            collections.append(collection)
-
-        return collections
-
-    def local_replicas(self, cached: bool = False) -> List[str]:
-        if cached:
-            client = self.cache
-        elif self.zk.exists(self.collections_znode):
-            client = self.zk
-        else:
-            return []
-
-        replicas = []
-        for collection_name in client.get_children(self.collections_znode):
-            shards_znode = self.shard_znode(collection_name)
-            for shard_name in client.get_children(shards_znode):
-                replicas_znode = self.replica_znode(collection_name, shard_name)
-                for hostport in client.get_children(replicas_znode):
-                    if hostport == self.hostport:
-                        replica_znode = self.replica_znode(
-                            collection_name, shard_name, hostport
-                        )
-                        replicas.append(replica_znode)
-        return replicas
-
-    def listener(self, state):
-        if state == KazooState.LOST:
-            logger.warn("Connection to Zookeeper lost")
-        elif state == KazooState.SUSPENDED:
-            logger.warn("Connection to Zookeeper disconnected")
-        else:
-            logger.info("Connection to Zookeeper established")
-
-    def close(self):
-        self.cache.close()
-        self.zk.stop()
-        self.zk.close()
-
-    def signal_listener(self, signum, frame):
-        self.down()
-        self.close()
+    def commit_transaction(self, transaction: kazoo.client.TransactionRequest) -> bool:
+        """Commit a transaction and log the first exception after rollbacks"""
+        for result, operation in zip(transaction.commit(), transaction.operations):
+            if isinstance(result, kazoo.exceptions.RolledBackError):
+                continue
+            elif isinstance(result, Exception):
+                logger.error(
+                    f"{result.__class__.__name__} in Kazoo transaction: {operation}"
+                )
+                return False
+        return True

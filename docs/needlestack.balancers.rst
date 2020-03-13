@@ -12,6 +12,14 @@ needlestack.balancers.greedy module
    :undoc-members:
    :show-inheritance:
 
+needlestack.balancers.knapsack module
+-------------------------------------
+
+.. automodule:: needlestack.balancers.knapsack
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

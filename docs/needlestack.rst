@@ -11,8 +11,21 @@ Subpackages
    needlestack.cluster_managers
    needlestack.collections
    needlestack.data_sources
-   needlestack.neighbors
+   needlestack.indices
    needlestack.servicers
+   needlestack.utilities
+
+Submodules
+----------
+
+needlestack.exceptions module
+-----------------------------
+
+.. automodule:: needlestack.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------
