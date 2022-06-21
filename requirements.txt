@@ -4,5 +4,5 @@ grpcio==1.26.0
 grpcio-health-checking==1.26.0
 grpcio-tools==1.26.0
 kazoo==2.6.1
-numpy==1.16.4
+numpy==1.22.0
 protobuf==3.9.0
