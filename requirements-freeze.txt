@@ -13,7 +13,7 @@ grpcio-health-checking==1.26.0
 grpcio-tools==1.26.0
 idna==2.8
 kazoo==2.6.1
-numpy==1.16.4
+numpy==1.22.0
 protobuf==3.9.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
